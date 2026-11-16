@@ -3,6 +3,9 @@ import '../home/presentation/screens/home_screen.dart';
 import '../groups/presentation/screens/groups_list_screen.dart';
 import '../settlement/presentation/screens/spends_screen.dart';
 import '../settlement/presentation/screens/profile_screen.dart';
+import '../expense/presentation/screens/add_expense_screen.dart';
+import '../settlement/presentation/screens/settle_up_sheet.dart';
+
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
 
@@ -13,19 +16,36 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    GroupsListScreen(),
-    SpendsScreen(),
-    ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      HomeScreen(
+        onAddExpenseTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
+          );
+        },
+        onSettleUpTap: () {
+          SettleUpSheet.show(
+            context,
+            peerId: 'sheeda',
+            peerName: 'Sheeda',
+          );
+        },
+        onProfileTap: () {
+          setState(() => _currentIndex = 3);
+        },
+      ),
+      const GroupsListScreen(),
+      const SpendsScreen(),
+      const ProfileScreen(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

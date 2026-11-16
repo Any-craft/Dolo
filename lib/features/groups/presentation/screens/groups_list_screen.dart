@@ -35,26 +35,29 @@ class GroupsListScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Groups',
-                          style: AppTypography.screenTitle.copyWith(
-                            color: Colors.white,
-                            fontSize: 28,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Groups',
+                            style: AppTypography.screenTitle.copyWith(
+                              color: Colors.white,
+                              fontSize: 28,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Shared splits and roommate balances',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.textDarkMuted,
-                            fontSize: 13,
+                          const SizedBox(height: 4),
+                          Text(
+                            'Shared splits and roommate balances',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.textDarkMuted,
+                              fontSize: 13,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 12),
                     InkWell(
                       onTap: () {
                         Navigator.of(context).push(

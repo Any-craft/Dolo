@@ -123,7 +123,7 @@ class GroupDetailNotifier extends StateNotifier<GroupDetailState> {
       'kaptaan': 700,
       'hamza': -50,
     };
-    final simplified = DebtSimplifier.simplifyNetBalances(netMap);
+    DebtSimplifier.simplifyNetBalances(netMap);
     // simplified.length is the minimal number of payments
   }
 

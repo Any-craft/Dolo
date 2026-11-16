@@ -8,6 +8,9 @@ import '../widgets/dark_cockpit_header.dart';
 import '../widgets/filter_pill_bar.dart';
 import '../widgets/transaction_feed_item.dart';
 import '../../../khata_1on1/presentation/screens/khata_detail_screen.dart';
+import '../../../expense/presentation/screens/add_expense_screen.dart';
+import '../../../settlement/presentation/screens/settle_up_sheet.dart';
+import '../../../settlement/presentation/screens/profile_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   final VoidCallback? onAddExpenseTap;
@@ -61,7 +64,15 @@ class HomeScreen extends ConsumerWidget {
                   totalOwed: summary.totalOwed,
                   totalOwe: summary.totalOwe,
                   settledCount: summary.settledCount,
-                  onProfileTap: onProfileTap,
+                  onProfileTap: onProfileTap ??
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ProfileScreen(),
+                          ),
+                        );
+                      },
                 ),
 
                 // Bottom 65% Surface Sheet
@@ -90,7 +101,16 @@ class HomeScreen extends ConsumerWidget {
                                 text: '+ Add expense',
                                 backgroundColor: AppColors.mint,
                                 textColor: AppColors.textLightPrimary,
-                                onTap: onAddExpenseTap,
+                                onTap: onAddExpenseTap ??
+                                    () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const AddExpenseScreen(),
+                                        ),
+                                      );
+                                    },
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -103,7 +123,14 @@ class HomeScreen extends ConsumerWidget {
                                 textColor: isDark
                                     ? AppColors.textDarkPrimary
                                     : AppColors.textLightPrimary,
-                                onTap: onSettleUpTap,
+                                onTap: onSettleUpTap ??
+                                    () {
+                                      SettleUpSheet.show(
+                                        context,
+                                        peerId: 'sheeda',
+                                        peerName: 'Sheeda',
+                                      );
+                                    },
                               ),
                             ),
                           ],
@@ -184,23 +211,21 @@ class _PrimaryCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(AppDimensions.ctaRadius),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppDimensions.ctaRadius),
-        child: Container(
+        child: SizedBox(
           height: AppDimensions.ctaHeight,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(AppDimensions.ctaRadius),
-          ),
-          child: Text(
-            text,
-            style: AppTypography.cardTitle.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
+          child: Center(
+            child: Text(
+              text,
+              style: AppTypography.cardTitle.copyWith(
+                color: textColor,
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+              ),
             ),
           ),
         ),

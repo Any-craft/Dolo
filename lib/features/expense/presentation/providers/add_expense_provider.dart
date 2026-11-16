@@ -1,6 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/algorithms/split_calculator.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/database/tables.dart';
 import '../../../../core/models/expense_model.dart';
+import '../../../home/presentation/providers/dashboard_provider.dart';
+import '../../../settlement/presentation/screens/spends_screen.dart';
 
 class MemberShareItem {
   final String id;
@@ -79,21 +85,23 @@ class AddExpenseState {
 }
 
 final addExpenseProvider = StateNotifierProvider<AddExpenseNotifier, AddExpenseState>((ref) {
-  return AddExpenseNotifier();
+  return AddExpenseNotifier(ref);
 });
 
 class AddExpenseNotifier extends StateNotifier<AddExpenseState> {
-  AddExpenseNotifier()
+  final Ref? _ref;
+
+  AddExpenseNotifier([this._ref])
       : super(
-          AddExpenseState(
+          const AddExpenseState(
             totalAmount: 3600,
             title: 'Dinner at Bundu Khan',
             category: 'Food',
             payerName: 'You',
             groupName: 'Hostel Gang',
             splitMode: SplitMode.equal,
-            members: const [
-              MemberShareItem(
+            members: [
+              const MemberShareItem(
                 id: 'user_self',
                 name: 'You',
                 initials: 'AL',
@@ -170,9 +178,65 @@ class AddExpenseNotifier extends StateNotifier<AddExpenseState> {
 
   Future<bool> saveExpense() async {
     state = state.copyWith(isSaving: true);
-    // Simulate instant SQLite save
-    await Future.delayed(const Duration(milliseconds: 200));
-    state = state.copyWith(isSaving: false);
-    return true;
+    try {
+      final db = await AppDatabase.instance.database;
+      final expenseId = const Uuid().v4();
+      final now = DateTime.now().toIso8601String();
+
+      // Ensure mock contacts exist so foreign key constraint passes
+      for (final m in state.members) {
+        if (m.id != 'user_self') {
+          await db.insert(
+            DbTables.contacts,
+            {
+              'id': m.id,
+              'name': m.name,
+              'phone': '',
+              'raast_id': '',
+              'avatar_initials': m.initials,
+              'avatar_color': m.colorHex,
+              'is_shadow': 0,
+              'created_at': now,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+        }
+      }
+
+      await db.transaction((txn) async {
+        await txn.insert(DbTables.expenses, {
+          'id': expenseId,
+          'group_id': null,
+          'payer_id': 'user_self',
+          'title': state.title,
+          'category': state.category,
+          'total_amount': state.totalAmount,
+          'split_mode': state.splitMode.name,
+          'payment_method': 'Cash',
+          'receipt_image_path': state.receiptPath,
+          'is_settled': 0,
+          'is_trashed': 0,
+          'created_at': now,
+        });
+
+        for (final m in state.members) {
+          await txn.insert(DbTables.expenseSplits, {
+            'id': const Uuid().v4(),
+            'expense_id': expenseId,
+            'contact_id': m.id,
+            'share_amount': m.shareAmount,
+            'is_paid': m.id == 'user_self' ? 1 : 0,
+          });
+        }
+      });
+
+      _ref?.invalidate(dashboardSummaryProvider);
+      _ref?.invalidate(spendsCategoryProvider);
+      state = state.copyWith(isSaving: false);
+      return true;
+    } catch (_) {
+      state = state.copyWith(isSaving: false);
+      return false;
+    }
   }
 }

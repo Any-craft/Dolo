@@ -9,6 +9,7 @@ import 'package:dolo/core/database/app_database.dart';
 import 'package:dolo/core/database/tables.dart';
 import 'package:dolo/features/home/presentation/providers/dashboard_provider.dart';
 import 'package:dolo/features/retention/data/retention_service.dart';
+import 'package:dolo/features/settlement/presentation/screens/spends_screen.dart';
 
 // ─────────────────────────── Provider ───────────────────────────
 
@@ -95,7 +96,10 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
     }
 
     // A restored expense counts toward the dashboard again.
-    if (isRestore) ref.invalidate(dashboardSummaryProvider);
+    if (isRestore) {
+      ref.invalidate(dashboardSummaryProvider);
+      ref.invalidate(spendsCategoryProvider);
+    }
     ref.invalidate(trashedExpensesProvider);
 
     messenger

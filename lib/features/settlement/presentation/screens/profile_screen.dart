@@ -8,6 +8,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../presentation/providers/profile_provider.dart';
 import '../../../trash/presentation/screens/trash_screen.dart';
+import '../../../settings/presentation/screens/storage_sync_screen.dart';
 
 /// Profile Screen (Screen 7) — Pay Me QR, Raast ID, Edit navigation.
 class ProfileScreen extends ConsumerWidget {
@@ -248,7 +249,11 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.sync_rounded,
                     label: 'Cloud Sync',
                     isDark: isDark,
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const StorageSyncScreen()),
+                    ),
                   ),
                   const Divider(height: 1),
                   _SettingsRow(
