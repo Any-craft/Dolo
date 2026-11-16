@@ -5,6 +5,11 @@ import 'package:dolo/features/expense/presentation/screens/add_expense_screen.da
 
 void main() {
   testWidgets('AddExpenseScreen renders cockpit, hero amount, split tabs, members and CTA', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(
