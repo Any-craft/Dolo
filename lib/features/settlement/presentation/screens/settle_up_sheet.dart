@@ -9,6 +9,7 @@ import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/utils/image_compressor_helper.dart';
 import '../../domain/models/settlement_bill.dart';
 import '../providers/settle_up_provider.dart';
+import 'receipt_view_screen.dart';
 
 class SettleUpSheet extends ConsumerWidget {
   final String peerId;
@@ -36,6 +37,7 @@ class SettleUpSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final rootContext = context;
     final state = ref.watch(settleUpProvider(peerId));
     final notifier = ref.read(settleUpProvider(peerId).notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -127,13 +129,18 @@ class SettleUpSheet extends ConsumerWidget {
                 netRs: state.netPayableRs,
                 onConfirm: () {
                   HapticFeedback.mediumImpact();
+                  final amount = state.netPayableRs;
+                  final method = state.paymentMethod == PaymentMethod.cash
+                      ? 'Cash'
+                      : 'Online Transfer';
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Settlement of Rs ${state.netPayableRs} recorded ✓'),
-                      backgroundColor: AppColors.mint,
-                      duration: const Duration(seconds: 3),
-                    ),
+                  ReceiptViewScreen.show(
+                    rootContext,
+                    peerId: peerId,
+                    peerName: peerName,
+                    amountRs: amount,
+                    paymentMethod: method,
+                    isSettled: true,
                   );
                 },
               ),

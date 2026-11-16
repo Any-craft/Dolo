@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../presentation/providers/profile_provider.dart';
+import '../../../trash/presentation/screens/trash_screen.dart';
 
 /// Profile Screen (Screen 7) — Pay Me QR, Raast ID, Edit navigation.
 class ProfileScreen extends ConsumerWidget {
@@ -219,6 +220,16 @@ class ProfileScreen extends ConsumerWidget {
               isDark: isDark,
               child: Column(
                 children: [
+                  _SettingsRow(
+                    icon: Icons.delete_outline_rounded,
+                    label: 'Trash',
+                    isDark: isDark,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TrashScreen()),
+                    ),
+                  ),
+                  const Divider(height: 1),
                   _SettingsRow(
                     icon: Icons.group_rounded,
                     label: 'Group Nicknames',
