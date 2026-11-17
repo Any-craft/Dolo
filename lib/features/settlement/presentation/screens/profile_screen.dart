@@ -9,6 +9,8 @@ import '../../../../core/constants/app_dimensions.dart';
 import '../../presentation/providers/profile_provider.dart';
 import '../../../trash/presentation/screens/trash_screen.dart';
 import '../../../settings/presentation/screens/storage_sync_screen.dart';
+import '../../../settings/presentation/screens/notifications_screen.dart';
+import '../../../settings/presentation/screens/appearance_screen.dart';
 
 /// Profile Screen (Screen 7) — Pay Me QR, Raast ID, Edit navigation.
 class ProfileScreen extends ConsumerWidget {
@@ -242,7 +244,12 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.notifications_rounded,
                     label: 'Reminders',
                     isDark: isDark,
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationsScreen(),
+                      ),
+                    ),
                   ),
                   const Divider(height: 1),
                   _SettingsRow(
@@ -260,7 +267,12 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.palette_rounded,
                     label: 'Appearance & App Icon',
                     isDark: isDark,
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AppearanceScreen(),
+                      ),
+                    ),
                   ),
                 ],
               ),

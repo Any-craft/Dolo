@@ -9,7 +9,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: AppColors.cockpitGradientStart,
+      scaffoldBackgroundColor: AppColors.lightBackground,
       primaryColor: AppColors.mint,
       colorScheme: const ColorScheme.light(
         primary: AppColors.mint,
@@ -20,7 +20,7 @@ class AppTheme {
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
       ),
     );
   }

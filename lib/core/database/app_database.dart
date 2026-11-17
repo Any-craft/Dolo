@@ -15,10 +15,12 @@ class AppDatabase {
   static const int _databaseVersion = 1;
 
   Database? _db;
+  Future<Database>? _initDbFuture;
 
   Future<Database> get database async {
     if (_db != null) return _db!;
-    _db = await _initDatabase();
+    _initDbFuture ??= _initDatabase();
+    _db = await _initDbFuture;
     return _db!;
   }
 

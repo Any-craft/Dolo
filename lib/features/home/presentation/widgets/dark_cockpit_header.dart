@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../core/constants/app_icons_config.dart';
+import '../../../../core/providers/app_icon_provider.dart';
 import 'glass_triad_card.dart';
 
-class DarkCockpitHeader extends StatelessWidget {
+class DarkCockpitHeader extends ConsumerWidget {
   final String userName;
   final int netStanding;
   final int totalOwed;
@@ -26,11 +28,12 @@ class DarkCockpitHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final currencyFormatter = NumberFormat('#,###');
     final isPositive = netStanding >= 0;
     final prefix = isPositive ? '+ ' : '- ';
     final formattedAmount = '$prefix Rs ${currencyFormatter.format(netStanding.abs())}';
+    final activeIcon = ref.watch(appIconProvider);
 
     return Container(
       padding: const EdgeInsets.only(
@@ -70,7 +73,7 @@ class DarkCockpitHeader extends StatelessWidget {
                     ),
                     padding: const EdgeInsets.all(6),
                     child: SvgPicture.asset(
-                      AppIconsConfig.defaultIcon.assetPath,
+                      activeIcon.assetPath,
                       fit: BoxFit.contain,
                     ),
                   ),
