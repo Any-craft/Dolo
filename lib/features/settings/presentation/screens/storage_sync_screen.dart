@@ -9,6 +9,7 @@ import 'package:dolo/core/constants/app_dimensions.dart';
 import 'package:dolo/core/constants/app_typography.dart';
 import 'package:dolo/core/database/app_database.dart';
 import 'package:dolo/core/database/tables.dart';
+import 'package:dolo/core/sync/sync_service.dart';
 
 const String _imagesKey = 'auto_purge_images_days';
 const String _metadataKey = 'auto_purge_metadata_days';
@@ -228,18 +229,11 @@ class _StorageSyncScreenState extends State<StorageSyncScreen> {
     setState(() => _syncing = true);
 
     try {
+      final syncResult = await SyncService().syncAll();
       final count = await _queryUnsyncedCount();
       if (!mounted) return;
       setState(() => _unsyncedCount = count);
-
-      if (count == 0) {
-        _snack('All group changes are in sync');
-      } else {
-        _snack(
-          '$count change${count == 1 ? '' : 's'} waiting. '
-          'Cloud relay is not enabled yet.',
-        );
-      }
+      _snack(syncResult.message);
     } catch (_) {
       _snack('Could not check sync status');
     } finally {

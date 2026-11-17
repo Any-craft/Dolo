@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'core/config/app_config.dart';
 
@@ -16,6 +17,20 @@ void main() async {
   
   // Load confidential environment variables (.env)
   await AppConfig.init();
+
+  // Safely initialize Supabase if valid credentials exist
+  if (AppConfig.supabaseUrl.isNotEmpty &&
+      !AppConfig.supabaseUrl.contains('your-project-id') &&
+      !AppConfig.supabaseUrl.contains('placeholder')) {
+    try {
+      await Supabase.initialize(
+        url: AppConfig.supabaseUrl,
+        anonKey: AppConfig.supabaseAnonKey,
+      );
+    } catch (e) {
+      debugPrint('Supabase init skipped (offline mode): $e');
+    }
+  }
 
   runApp(
     const ProviderScope(
