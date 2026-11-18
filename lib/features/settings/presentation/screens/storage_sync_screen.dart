@@ -15,7 +15,7 @@ const String _imagesKey = 'auto_purge_images_days';
 const String _metadataKey = 'auto_purge_metadata_days';
 const String _never = 'never';
 
-const String _imagesDefault = '30';
+const String _imagesDefault = '7'; // matches DB seed + PRD Module 9
 const String _metadataDefault = _never;
 
 class _Option {
