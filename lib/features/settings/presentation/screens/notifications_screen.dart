@@ -4,44 +4,65 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dolo/core/constants/app_colors.dart';
 import 'package:dolo/core/constants/app_dimensions.dart';
 import 'package:dolo/core/constants/app_typography.dart';
+import 'package:dolo/core/constants/reminder_tones.dart';
 import 'package:dolo/core/database/app_database.dart';
 import 'package:dolo/core/database/tables.dart';
 
 // ───────────────────────── Keys & defaults ─────────────────────────
 
-const String _kDailyEnabled = 'daily_reminder_enabled';
+const String _kEnabled = 'daily_reminder_enabled';
+const String _kFrequency = 'reminder_frequency';
 const String _kReminderTime = 'reminder_time';
-const String _kNudge = 'settlement_nudge_frequency';
+const String _kTone = ReminderTones.settingsKey; // 'whatsapp_tone'
 const String _kAutoCopyRaast = 'auto_copy_raast';
 
 const String _defaultTime = '21:00';
-const String _defaultNudge = 'standard';
+
+/// How often the local push reminder fires.
+enum ReminderFrequency {
+  daily('daily', 'Daily'),
+  weekly('weekly', 'Weekly');
+
+  const ReminderFrequency(this.id, this.label);
+  final String id;
+  final String label;
+
+  static ReminderFrequency fromId(String? id) =>
+      ReminderFrequency.values.firstWhere(
+        (f) => f.id == id,
+        orElse: () => ReminderFrequency.daily,
+      );
+}
 
 // ───────────────────────── State ─────────────────────────
 
 class ReminderSettings {
-  final bool dailyReminderEnabled;
+  final bool remindersEnabled;
+  final ReminderFrequency frequency;
   final String reminderTime; // 'HH:mm', 24h
-  final String nudgeFrequency; // gentle | standard | urgent
+  final ReminderTone tone;
   final bool autoCopyRaast;
 
   const ReminderSettings({
-    this.dailyReminderEnabled = false,
+    this.remindersEnabled = false,
+    this.frequency = ReminderFrequency.daily,
     this.reminderTime = _defaultTime,
-    this.nudgeFrequency = _defaultNudge,
+    this.tone = ReminderTone.friendly,
     this.autoCopyRaast = false,
   });
 
   ReminderSettings copyWith({
-    bool? dailyReminderEnabled,
+    bool? remindersEnabled,
+    ReminderFrequency? frequency,
     String? reminderTime,
-    String? nudgeFrequency,
+    ReminderTone? tone,
     bool? autoCopyRaast,
   }) {
     return ReminderSettings(
-      dailyReminderEnabled: dailyReminderEnabled ?? this.dailyReminderEnabled,
+      remindersEnabled: remindersEnabled ?? this.remindersEnabled,
+      frequency: frequency ?? this.frequency,
       reminderTime: reminderTime ?? this.reminderTime,
-      nudgeFrequency: nudgeFrequency ?? this.nudgeFrequency,
+      tone: tone ?? this.tone,
       autoCopyRaast: autoCopyRaast ?? this.autoCopyRaast,
     );
   }
@@ -72,25 +93,23 @@ class ReminderSettingsNotifier
     }
   }
 
-  static const _validNudges = {'gentle', 'standard', 'urgent'};
-
   Future<void> _load() async {
     try {
       final db = await AppDatabase.instance.database;
       final rows = await db.rawQuery(
         'SELECT key, value FROM "${DbTables.appSettings}" '
-        'WHERE key IN (?, ?, ?, ?)',
-        [_kDailyEnabled, _kReminderTime, _kNudge, _kAutoCopyRaast],
+        'WHERE key IN (?, ?, ?, ?, ?)',
+        [_kEnabled, _kFrequency, _kReminderTime, _kTone, _kAutoCopyRaast],
       );
       final map = {
         for (final r in rows) r['key'] as String: r['value'] as String?,
       };
 
-      final nudge = map[_kNudge];
       final settings = ReminderSettings(
-        dailyReminderEnabled: map[_kDailyEnabled] == 'true',
+        remindersEnabled: map[_kEnabled] == 'true',
+        frequency: ReminderFrequency.fromId(map[_kFrequency]),
         reminderTime: map[_kReminderTime] ?? _defaultTime,
-        nudgeFrequency: _validNudges.contains(nudge) ? nudge! : _defaultNudge,
+        tone: ReminderTone.fromId(map[_kTone]),
         autoCopyRaast: map[_kAutoCopyRaast] == 'true',
       );
       if (mounted) state = AsyncValue.data(settings);
@@ -133,14 +152,21 @@ class ReminderSettingsNotifier
     }
   }
 
-  Future<bool> setDailyEnabled(bool enabled) {
+  Future<bool> setRemindersEnabled(bool enabled) {
     final cur = state.value;
     if (cur == null) return Future.value(false);
     return _apply(
-      cur.copyWith(dailyReminderEnabled: enabled),
-      _kDailyEnabled,
+      cur.copyWith(remindersEnabled: enabled),
+      _kEnabled,
       enabled ? 'true' : 'false',
     );
+  }
+
+  Future<bool> setFrequency(ReminderFrequency frequency) {
+    final cur = state.value;
+    if (cur == null) return Future.value(false);
+    return _apply(
+        cur.copyWith(frequency: frequency), _kFrequency, frequency.id);
   }
 
   Future<bool> setReminderTime(TimeOfDay time) {
@@ -151,12 +177,10 @@ class ReminderSettingsNotifier
     return _apply(cur.copyWith(reminderTime: value), _kReminderTime, value);
   }
 
-  Future<bool> setNudge(String frequency) {
+  Future<bool> setTone(ReminderTone tone) {
     final cur = state.value;
-    if (cur == null || !_validNudges.contains(frequency)) {
-      return Future.value(false);
-    }
-    return _apply(cur.copyWith(nudgeFrequency: frequency), _kNudge, frequency);
+    if (cur == null) return Future.value(false);
+    return _apply(cur.copyWith(tone: tone), _kTone, tone.id);
   }
 
   Future<bool> setAutoCopyRaast(bool enabled) {
@@ -180,11 +204,8 @@ final reminderSettingsProvider = StateNotifierProvider.autoDispose<
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
-  static const _tones = <_ToneOption>[
-    _ToneOption('gentle', 'Gentle', 'Yaar hisaab dekh lo'),
-    _ToneOption('standard', 'Standard', 'Dolo settlement pending'),
-    _ToneOption('urgent', 'Strict', 'Outstanding dues reminder'),
-  ];
+  /// Sample amount used for the tone preview bubble.
+  static const int previewAmountRs = 1200;
 
   void _snack(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
@@ -215,6 +236,23 @@ class NotificationsScreen extends ConsumerWidget {
     await _run(
       context,
       () => ref.read(reminderSettingsProvider.notifier).setReminderTime(picked),
+    );
+  }
+
+  /// Saves [tone] and previews the WhatsApp message it produces.
+  Future<void> _selectTone(
+    BuildContext context,
+    WidgetRef ref,
+    ReminderTone tone,
+  ) async {
+    await _run(
+      context,
+      () => ref.read(reminderSettingsProvider.notifier).setTone(tone),
+    );
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _TonePreviewDialog(tone: tone),
     );
   }
 
@@ -263,142 +301,143 @@ class NotificationsScreen extends ConsumerWidget {
             ),
           ),
         ),
-        data: (settings) => ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppDimensions.screenHorizontalPadding,
-            8,
-            AppDimensions.screenHorizontalPadding,
-            32,
-          ),
-          children: [
-            // ── Section 1: Khata Reminders ──
-            _SectionLabel('Khata Reminders', muted: muted),
-            _Card(
-              surface: surface,
-              border: border,
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16),
-                    activeTrackColor: AppColors.mint,
-                    title: Text(
-                      'Daily reminder',
-                      style: AppTypography.cardTitle.copyWith(color: primary),
-                    ),
-                    subtitle: Text(
-                      'A gentle daily check on your khata',
-                      style: AppTypography.caption.copyWith(color: muted),
-                    ),
-                    value: settings.dailyReminderEnabled,
-                    onChanged: (v) =>
-                        _run(context, () => notifier.setDailyEnabled(v)),
-                  ),
-                  Divider(height: 1, color: border),
-                  ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16),
-                    enabled: settings.dailyReminderEnabled,
-                    leading: Icon(
-                      Icons.schedule_rounded,
-                      color: settings.dailyReminderEnabled
-                          ? AppColors.indigo
-                          : muted,
-                    ),
-                    title: Text(
-                      'Reminder time',
-                      style: AppTypography.cardTitle.copyWith(
-                        color: settings.dailyReminderEnabled
-                            ? primary
-                            : muted,
-                      ),
-                    ),
-                    trailing: Text(
-                      settings.timeOfDay.format(context),
-                      style: AppTypography.cardTitle.copyWith(
-                        color: settings.dailyReminderEnabled
-                            ? AppColors.indigo
-                            : muted,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    onTap: settings.dailyReminderEnabled
-                        ? () => _pickTime(context, ref, settings)
-                        : null,
-                  ),
-                ],
-              ),
+        data: (settings) {
+          final on = settings.remindersEnabled;
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppDimensions.screenHorizontalPadding,
+              8,
+              AppDimensions.screenHorizontalPadding,
+              32,
             ),
-            const SizedBox(height: 24),
-
-            // ── Section 2: Nudge Tone ──
-            _SectionLabel('Nudge Tone', muted: muted),
-            _Card(
-              surface: surface,
-              border: border,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
+            children: [
+              // ── Section 1: Local push reminders ──
+              _SectionLabel('Khata Reminders', muted: muted),
+              _Card(
+                surface: surface,
+                border: border,
                 child: Column(
                   children: [
-                    for (final tone in _tones)
+                    SwitchListTile(
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16),
+                      activeTrackColor: AppColors.mint,
+                      title: Text(
+                        'Local push reminders',
+                        style: AppTypography.cardTitle.copyWith(color: primary),
+                      ),
+                      subtitle: Text(
+                        'On-device nudges about pending khata dues',
+                        style: AppTypography.caption.copyWith(color: muted),
+                      ),
+                      value: on,
+                      onChanged: (v) =>
+                          _run(context, () => notifier.setRemindersEnabled(v)),
+                    ),
+                    if (on) ...[
+                      Divider(height: 1, color: border),
                       Padding(
-                        padding: EdgeInsets.only(
-                          bottom: tone == _tones.last ? 0 : 8,
-                        ),
-                        child: _ToneTile(
-                          option: tone,
-                          selected: settings.nudgeFrequency == tone.value,
-                          primary: primary,
-                          muted: muted,
-                          border: border,
-                          onTap: () => _run(
-                            context,
-                            () => notifier.setNudge(tone.value),
-                          ),
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Frequency',
+                                style: AppTypography.cardTitle
+                                    .copyWith(color: primary),
+                              ),
+                            ),
+                            for (final f in ReminderFrequency.values)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: _FrequencyPill(
+                                  label: f.label,
+                                  selected: settings.frequency == f,
+                                  isDark: isDark,
+                                  onTap: () => _run(
+                                    context,
+                                    () => notifier.setFrequency(f),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
+                      Divider(height: 1, color: border),
+                      ListTile(
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 16),
+                        leading: const Icon(
+                          Icons.schedule_rounded,
+                          color: AppColors.indigo,
+                        ),
+                        title: Text(
+                          'Reminder time',
+                          style:
+                              AppTypography.cardTitle.copyWith(color: primary),
+                        ),
+                        trailing: Text(
+                          settings.timeOfDay.format(context),
+                          style: AppTypography.cardTitle.copyWith(
+                            color: AppColors.indigo,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        onTap: () => _pickTime(context, ref, settings),
+                      ),
+                    ],
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // ── Section 3: Payment Sharing ──
-            _SectionLabel('Payment Sharing', muted: muted),
-            _Card(
-              surface: surface,
-              border: border,
-              child: SwitchListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                activeTrackColor: AppColors.mint,
-                title: Text(
-                  'Auto-attach Raast ID to reminder text',
-                  style: AppTypography.cardTitle.copyWith(color: primary),
+              // ── Section 2: WhatsApp tone presets ──
+              _SectionLabel('WhatsApp Reminder Tone', muted: muted),
+              for (final tone in ReminderTone.values)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _ToneCard(
+                    tone: tone,
+                    selected: settings.tone == tone,
+                    surface: surface,
+                    primary: primary,
+                    muted: muted,
+                    border: border,
+                    onTap: () => _selectTone(context, ref, tone),
+                  ),
                 ),
-                subtitle: Text(
-                  'Your Raast ID is added so friends can pay you faster',
-                  style: AppTypography.caption.copyWith(color: muted),
+              const SizedBox(height: 14),
+
+              // ── Section 3: Payment sharing ──
+              _SectionLabel('Payment Sharing', muted: muted),
+              _Card(
+                surface: surface,
+                border: border,
+                child: SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  activeTrackColor: AppColors.mint,
+                  title: Text(
+                    'Auto-attach Raast ID to reminder text',
+                    style: AppTypography.cardTitle.copyWith(color: primary),
+                  ),
+                  subtitle: Text(
+                    'Your Raast ID is added so friends can pay you faster',
+                    style: AppTypography.caption.copyWith(color: muted),
+                  ),
+                  value: settings.autoCopyRaast,
+                  onChanged: (v) =>
+                      _run(context, () => notifier.setAutoCopyRaast(v)),
                 ),
-                value: settings.autoCopyRaast,
-                onChanged: (v) =>
-                    _run(context, () => notifier.setAutoCopyRaast(v)),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
 // ───────────────────────── Widgets ─────────────────────────
-
-class _ToneOption {
-  final String value;
-  final String label;
-  final String sample;
-  const _ToneOption(this.value, this.label, this.sample);
-}
 
 class _SectionLabel extends StatelessWidget {
   final String text;
@@ -429,30 +468,77 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: surface,
+    return Material(
+      color: surface,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
-        border: Border.all(color: border),
+        side: BorderSide(color: border),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Material(color: Colors.transparent, child: child),
+      child: child,
     );
   }
 }
 
-class _ToneTile extends StatelessWidget {
-  final _ToneOption option;
+class _FrequencyPill extends StatelessWidget {
+  final String label;
   final bool selected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _FrequencyPill({
+    required this.label,
+    required this.selected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final inactiveBg =
+        isDark ? AppColors.darkPillInactive : AppColors.lightPillInactive;
+    final inactiveText =
+        isDark ? AppColors.textDarkMuted : AppColors.textLightMuted;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? AppColors.mint : inactiveBg,
+        borderRadius: BorderRadius.circular(AppDimensions.pillRadius),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppDimensions.pillRadius),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              label,
+              style: AppTypography.caption.copyWith(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? AppColors.textLightPrimary : inactiveText,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ToneCard extends StatelessWidget {
+  final ReminderTone tone;
+  final bool selected;
+  final Color surface;
   final Color primary;
   final Color muted;
   final Color border;
   final VoidCallback onTap;
 
-  const _ToneTile({
-    required this.option,
+  const _ToneCard({
+    required this.tone,
     required this.selected,
+    required this.surface,
     required this.primary,
     required this.muted,
     required this.border,
@@ -461,62 +547,136 @@ class _ToneTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(AppDimensions.cardRadius - 4 < 0
-        ? 0
-        : AppDimensions.cardRadius - 4);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final radius = BorderRadius.circular(AppDimensions.cardRadius);
+    final selectedBg = isDark
+        ? AppColors.indigo.withValues(alpha: 0.18)
+        : AppColors.indigoSquircleBg;
+    final accent =
+        isDark ? AppColors.indigoTextDark : AppColors.indigoTextLight;
 
     return Semantics(
       selected: selected,
       button: true,
-      label: '${option.label}: ${option.sample}',
-      child: InkWell(
-        borderRadius: radius,
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.indigoSquircleBg : Colors.transparent,
-            borderRadius: radius,
-            border: Border.all(
-              color: selected ? AppColors.indigo : border,
-              width: selected ? 1.5 : 1,
-            ),
+      label: '${tone.label} tone',
+      child: Material(
+        color: selected ? selectedBg : surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: BorderSide(
+            color: selected ? AppColors.indigo : border,
+            width: selected ? 1.5 : 1,
           ),
-          child: Row(
-            children: [
-              Icon(
-                selected
-                    ? Icons.radio_button_checked_rounded
-                    : Icons.radio_button_off_rounded,
-                color: selected ? AppColors.indigo : muted,
-                size: 22,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      option.label,
-                      style: AppTypography.cardTitle.copyWith(
-                        color: selected ? AppColors.indigo : primary,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(tone.emoji, style: const TextStyle(fontSize: 24)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tone.label,
+                        style: AppTypography.cardTitle.copyWith(
+                          color: selected ? accent : primary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '"${option.sample}"',
-                      style: AppTypography.caption.copyWith(
-                        color: selected ? AppColors.indigo : muted,
-                        fontStyle: FontStyle.italic,
+                      const SizedBox(height: 4),
+                      Text(
+                        '"${tone.message(NotificationsScreen.previewAmountRs)}"',
+                        style: AppTypography.caption.copyWith(
+                          color: selected ? accent : muted,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Icon(
+                  selected
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_off_rounded,
+                  color: selected ? AppColors.indigo : muted,
+                  size: 22,
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// WhatsApp-style chat bubble previewing the selected tone.
+class _TonePreviewDialog extends StatelessWidget {
+  final ReminderTone tone;
+  const _TonePreviewDialog({required this.tone});
+
+  // WhatsApp outgoing-bubble greens, used only inside this preview.
+  static const Color _bubbleLight = Color(0xFFD9FDD3);
+  static const Color _bubbleDark = Color(0xFF005C4B);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary =
+        isDark ? AppColors.textDarkPrimary : AppColors.textLightPrimary;
+    final muted = isDark ? AppColors.textDarkMuted : AppColors.textLightMuted;
+
+    return AlertDialog(
+      backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
+      ),
+      title: Text(
+        '${tone.emoji}  ${tone.label} tone saved',
+        style: AppTypography.cardTitle.copyWith(color: primary),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Your WhatsApp reminders will read like this:',
+            style: AppTypography.caption.copyWith(color: muted),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: isDark ? _bubbleDark : _bubbleLight,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(14),
+                  topRight: Radius.circular(4),
+                  bottomLeft: Radius.circular(14),
+                  bottomRight: Radius.circular(14),
+                ),
+              ),
+              child: Text(
+                tone.message(NotificationsScreen.previewAmountRs),
+                style: AppTypography.bodySemiBold.copyWith(color: primary),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Got it'),
+        ),
+      ],
     );
   }
 }
