@@ -65,15 +65,20 @@ class ReceiptViewScreen extends StatelessWidget {
                 left: 0,
                 right: 0,
                 height: cockpitHeight + AppDimensions.surfaceSheetRadius,
-                child: const DecoratedBox(
+                child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [
-                        AppColors.cockpitGradientStart,
-                        AppColors.cockpitGradientEnd,
-                      ],
+                      colors: isDark
+                          ? const [
+                              AppColors.darkCockpitGradientStart,
+                              AppColors.darkCockpitGradientEnd,
+                            ]
+                          : const [
+                              AppColors.cockpitGradientStart,
+                              AppColors.cockpitGradientEnd,
+                            ],
                     ),
                   ),
                 ),

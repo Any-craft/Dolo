@@ -32,7 +32,7 @@ void main() {
     expect(find.text('Auto-purge in 7 days'), findsOneWidget);
     expect(find.text('Settlement via Cash'), findsOneWidget);
     expect(find.text('Sheeda'), findsOneWidget);
-    expect(find.text('Rs 1200'), findsOneWidget);
+    expect(find.text('Rs 1,200'), findsOneWidget);
 
     // Verify Actions
     expect(find.text('Share Receipt PNG'), findsOneWidget);
