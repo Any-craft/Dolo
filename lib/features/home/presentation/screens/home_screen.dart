@@ -11,6 +11,14 @@ import '../../../khata_1on1/presentation/screens/khata_detail_screen.dart';
 import '../../../expense/presentation/screens/add_expense_screen.dart';
 import '../../../settlement/presentation/screens/settle_up_sheet.dart';
 import '../../../settlement/presentation/screens/profile_screen.dart';
+import '../../../settlement/presentation/screens/spends_screen.dart';
+import '../../../retention/data/retention_service.dart';
+import '../../../trash/presentation/screens/trash_screen.dart';
+
+/// Feed rows swiped into Trash but not yet gone from the reloaded dashboard.
+/// A dismissed Dismissible must leave the tree immediately, while the
+/// provider reload is async, so we hide the rows locally in the meantime.
+final _hiddenFeedIdsProvider = StateProvider<Set<String>>((ref) => const {});
 
 class HomeScreen extends ConsumerWidget {
   final VoidCallback? onAddExpenseTap;
@@ -29,7 +37,11 @@ class HomeScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final summaryAsync = ref.watch(dashboardSummaryProvider);
     final activeFilter = ref.watch(activeFilterProvider);
-    final feedItems = ref.watch(filteredFeedProvider);
+    final hiddenIds = ref.watch(_hiddenFeedIdsProvider);
+    final feedItems = ref
+        .watch(filteredFeedProvider)
+        .where((i) => !hiddenIds.contains(i.id))
+        .toList();
 
     final cockpitGradient = LinearGradient(
       begin: Alignment.topLeft,
@@ -167,17 +179,26 @@ class HomeScreen extends ConsumerWidget {
                                   itemCount: feedItems.length,
                                   itemBuilder: (context, index) {
                                     final item = feedItems[index];
-                                    return TransactionFeedItem(
-                                      item: item,
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (ctx) => KhataDetailScreen(
-                                              peerId: item.title.toLowerCase(),
+                                    return Dismissible(
+                                      key: ValueKey('feed_${item.id}'),
+                                      direction: DismissDirection.endToStart,
+                                      background: const _TrashSwipeBackground(),
+                                      onDismissed: (_) => _moveToTrash(
+                                          context, ref, item.id, item.title),
+                                      child: TransactionFeedItem(
+                                        item: item,
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (ctx) =>
+                                                  KhataDetailScreen(
+                                                peerId:
+                                                    item.title.toLowerCase(),
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                      },
+                                          );
+                                        },
+                                      ),
                                     );
                                   },
                                 ),
@@ -190,6 +211,88 @@ class HomeScreen extends ConsumerWidget {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// Soft-deletes an expense (Module 10) and offers an Undo.
+Future<void> _moveToTrash(
+  BuildContext context,
+  WidgetRef ref,
+  String expenseId,
+  String title,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final hidden = ref.read(_hiddenFeedIdsProvider.notifier);
+  hidden.state = {...hidden.state, expenseId};
+
+  void refreshAll() {
+    ref.invalidate(dashboardSummaryProvider);
+    ref.invalidate(spendsCategoryProvider);
+    ref.invalidate(trashedExpensesProvider);
+  }
+
+  void unhide() {
+    hidden.state = {...hidden.state}..remove(expenseId);
+  }
+
+  try {
+    await RetentionService().trashExpense(expenseId);
+  } catch (_) {
+    unhide();
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('Could not move $title to Trash')));
+    return;
+  }
+
+  refreshAll();
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text('$title moved to Trash'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () async {
+            await RetentionService().restoreExpense(expenseId);
+            refreshAll();
+          },
+        ),
+      ),
+    );
+
+  // Once the reloaded feed no longer contains the row, stop hiding it so an
+  // Undo can bring it back.
+  try {
+    await ref.read(dashboardSummaryProvider.future);
+  } catch (_) {}
+  unhide();
+}
+
+class _TrashSwipeBackground extends StatelessWidget {
+  const _TrashSwipeBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppColors.rose,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Trash',
+            style: AppTypography.cardTitle.copyWith(color: Colors.white),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.delete_outline_rounded, color: Colors.white),
+        ],
       ),
     );
   }
