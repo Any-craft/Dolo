@@ -5,14 +5,15 @@ import '../constants/app_colors.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get lightTheme {
+  /// [accent] is the user-picked accent (Settings → Appearance).
+  static ThemeData light({Color accent = AppColors.mint}) {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.lightBackground,
-      primaryColor: AppColors.mint,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.mint,
+      primaryColor: accent,
+      colorScheme: ColorScheme.light(
+        primary: accent,
         secondary: AppColors.indigo,
         surface: AppColors.lightSurface,
         error: AppColors.rose,
@@ -25,14 +26,14 @@ class AppTheme {
     );
   }
 
-  static ThemeData get darkTheme {
+  static ThemeData dark({Color accent = AppColors.mint}) {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.darkCockpitGradientStart,
-      primaryColor: AppColors.mint,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.mint,
+      primaryColor: accent,
+      colorScheme: ColorScheme.dark(
+        primary: accent,
         secondary: AppColors.indigo,
         surface: AppColors.darkSurface,
         error: AppColors.rose,
@@ -44,4 +45,7 @@ class AppTheme {
       ),
     );
   }
+
+  static ThemeData get lightTheme => light();
+  static ThemeData get darkTheme => dark();
 }

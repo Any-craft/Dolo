@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dolo/app.dart';
 import 'package:dolo/core/constants/app_icons_config.dart';
 import 'package:dolo/core/providers/app_icon_provider.dart';
+import 'package:dolo/core/providers/appearance_provider.dart';
 import 'package:dolo/features/settings/presentation/screens/appearance_screen.dart';
 
 void main() {
@@ -32,6 +33,12 @@ void main() {
     expect(find.text('Dark Mode'), findsOneWidget);
     expect(find.text('Light Mode'), findsOneWidget);
 
+    // Verify Accent Section (5 swatches)
+    expect(find.text('ACCENT COLOR'), findsOneWidget);
+    for (final name in ['Mint', 'Rose', 'Indigo', 'Amber', 'Sky']) {
+      expect(find.text(name), findsOneWidget);
+    }
+
     // Verify App Icon Section
     expect(find.text('APP ICON'), findsOneWidget);
     expect(find.text('Interlocking Coins'), findsOneWidget);
@@ -41,6 +48,15 @@ void main() {
     // Tap Light Mode
     await tester.tap(find.text('Light Mode'));
     await tester.pumpAndSettle();
+
+    // Tap Rose accent -> provider updates
+    await tester.tap(find.text('Rose'));
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AppearanceScreen)),
+    );
+    expect(container.read(accentColorProvider), AccentColor.rose);
+    expect(container.read(themeModeProvider), ThemeMode.light);
 
     // Tap Aurora Glow icon card
     await tester.tap(find.text('Aurora Glow'));

@@ -2,65 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import 'package:dolo/app.dart';
 import 'package:dolo/core/constants/app_colors.dart';
 import 'package:dolo/core/constants/app_dimensions.dart';
 import 'package:dolo/core/constants/app_icons_config.dart';
 import 'package:dolo/core/constants/app_typography.dart';
-import 'package:dolo/core/database/app_database.dart';
-import 'package:dolo/core/database/tables.dart';
+import 'package:dolo/core/database/app_settings_store.dart';
 import 'package:dolo/core/providers/app_icon_provider.dart';
-
-// ───────────────────────── Keys ─────────────────────────
-
-const String _kThemeMode = 'app_theme_mode';
-
-// ───────────────────────── Persistence ─────────────────────────
+import 'package:dolo/core/providers/appearance_provider.dart';
 
 Future<void> _persistSetting(String key, String value) async {
   try {
-    final db = await AppDatabase.instance.database;
-    await db.rawInsert(
-      'INSERT OR REPLACE INTO ${DbTables.appSettings} (key, value) VALUES (?, ?)',
-      [key, value],
-    );
+    await AppSettingsStore.write(key, value);
   } catch (_) {}
-}
-
-Future<String?> _readSetting(String key) async {
-  try {
-    final db = await AppDatabase.instance.database;
-    final rows = await db.rawQuery(
-      'SELECT value FROM "${DbTables.appSettings}" WHERE key = ? LIMIT 1',
-      [key],
-    );
-    if (rows.isEmpty) return null;
-    return rows.first['value'] as String?;
-  } catch (_) {
-    return null;
-  }
-}
-
-String _themeToString(ThemeMode mode) {
-  switch (mode) {
-    case ThemeMode.light:
-      return 'light';
-    case ThemeMode.dark:
-      return 'dark';
-    case ThemeMode.system:
-      return 'system';
-  }
-}
-
-ThemeMode _themeFromString(String? value) {
-  switch (value) {
-    case 'light':
-      return ThemeMode.light;
-    case 'dark':
-      return ThemeMode.dark;
-    default:
-      return ThemeMode.system;
-  }
 }
 
 // ───────────────────────── Screen ─────────────────────────
@@ -94,25 +47,16 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
     ),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadStoredTheme();
-  }
-
-  Future<void> _loadStoredTheme() async {
-    final stored = await _readSetting(_kThemeMode);
-    if (stored != null && mounted) {
-      final mode = _themeFromString(stored);
-      if (ref.read(themeModeProvider) != mode) {
-        ref.read(themeModeProvider.notifier).state = mode;
-      }
-    }
-  }
-
+  // Saved theme + accent are loaded at startup (main.dart), so the screen
+  // only needs to update the providers and persist the choice.
   void _onThemeSelected(ThemeMode mode) {
     ref.read(themeModeProvider.notifier).state = mode;
-    _persistSetting(_kThemeMode, _themeToString(mode));
+    _persistSetting(AppearanceKeys.themeMode, themeModeToId(mode));
+  }
+
+  void _onAccentSelected(AccentColor accent) {
+    ref.read(accentColorProvider.notifier).state = accent;
+    _persistSetting(AppearanceKeys.accentColor, accent.id);
   }
 
   void _onIconSelected(AppIconOption icon) {
@@ -136,6 +80,7 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
     final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     final themeMode = ref.watch(themeModeProvider);
+    final accent = ref.watch(accentColorProvider);
     final activeIcon = ref.watch(appIconProvider);
     final icons = AppIconsConfig.availableIcons;
 
@@ -176,7 +121,23 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
             ),
           const SizedBox(height: 18),
 
-          // ── Section 2: App Icon ──
+          // ── Section 2: Accent colour ──
+          _SectionLabel('ACCENT COLOR', muted: muted),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              for (final option in AccentColor.values)
+                _AccentSwatch(
+                  accent: option,
+                  selected: option == accent,
+                  muted: muted,
+                  onTap: () => _onAccentSelected(option),
+                ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Section 3: App Icon ──
           _SectionLabel('APP ICON', muted: muted),
           GridView.builder(
             shrinkWrap: true,
@@ -186,7 +147,7 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              mainAxisExtent: 204,
+              mainAxisExtent: 220,
             ),
             itemBuilder: (context, index) {
               final icon = icons[index];
@@ -371,12 +332,12 @@ class _IconCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     child: SvgPicture.asset(
                       icon.assetPath,
-                      width: 64,
-                      height: 64,
+                      width: 80,
+                      height: 80,
                       fit: BoxFit.cover,
                       placeholderBuilder: (_) => SizedBox(
-                        width: 64,
-                        height: 64,
+                        width: 80,
+                        height: 80,
                         child: Icon(Icons.apps_rounded, color: muted),
                       ),
                     ),
@@ -420,6 +381,70 @@ class _IconCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AccentSwatch extends StatelessWidget {
+  final AccentColor accent;
+  final bool selected;
+  final Color muted;
+  final VoidCallback onTap;
+
+  const _AccentSwatch({
+    required this.accent,
+    required this.selected,
+    required this.muted,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '${accent.label} accent',
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 48,
+              height: 48,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? accent.color : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: accent.color,
+                  shape: BoxShape.circle,
+                ),
+                child: selected
+                    ? const Icon(Icons.check_rounded,
+                        color: AppColors.textLightPrimary, size: 20)
+                    : null,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              accent.label,
+              style: AppTypography.caption.copyWith(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? accent.color : muted,
+              ),
+            ),
+          ],
         ),
       ),
     );

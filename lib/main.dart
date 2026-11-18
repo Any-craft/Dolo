@@ -6,6 +6,7 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'core/config/app_config.dart';
+import 'core/providers/appearance_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,9 +33,16 @@ void main() async {
     }
   }
 
+  // Restore theme + accent before the first frame so they survive restarts.
+  final appearance = await loadSavedAppearance();
+
   runApp(
-    const ProviderScope(
-      child: DoloApp(),
+    ProviderScope(
+      overrides: [
+        themeModeProvider.overrideWith((ref) => appearance.themeMode),
+        accentColorProvider.overrideWith((ref) => appearance.accent),
+      ],
+      child: const DoloApp(),
     ),
   );
 }
