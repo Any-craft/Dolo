@@ -5,6 +5,7 @@ import '../../../../core/algorithms/split_calculator.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/tables.dart';
 import '../../../../core/models/expense_model.dart';
+import '../../../../core/sync/sync_service.dart';
 import '../../../home/presentation/providers/dashboard_provider.dart';
 import '../../../settlement/presentation/screens/spends_screen.dart';
 
@@ -40,6 +41,9 @@ class AddExpenseState {
   final String category;
   final String payerName;
   final String groupName;
+  /// Local `groups.id` when this is a shared-group expense; null for a
+  /// private 1-on-1 khata expense (which must never be synced).
+  final String? groupId;
   final SplitMode splitMode;
   final List<MemberShareItem> members;
   final String? receiptPath;
@@ -51,6 +55,7 @@ class AddExpenseState {
     required this.category,
     required this.payerName,
     required this.groupName,
+    this.groupId,
     required this.splitMode,
     required this.members,
     this.receiptPath,
@@ -65,6 +70,7 @@ class AddExpenseState {
     String? category,
     String? payerName,
     String? groupName,
+    String? groupId,
     SplitMode? splitMode,
     List<MemberShareItem>? members,
     String? receiptPath,
@@ -76,6 +82,7 @@ class AddExpenseState {
       category: category ?? this.category,
       payerName: payerName ?? this.payerName,
       groupName: groupName ?? this.groupName,
+      groupId: groupId ?? this.groupId,
       splitMode: splitMode ?? this.splitMode,
       members: members ?? this.members,
       receiptPath: receiptPath ?? this.receiptPath,
@@ -206,7 +213,7 @@ class AddExpenseNotifier extends StateNotifier<AddExpenseState> {
       await db.transaction((txn) async {
         await txn.insert(DbTables.expenses, {
           'id': expenseId,
-          'group_id': null,
+          'group_id': state.groupId,
           'payer_id': 'user_self',
           'title': state.title,
           'category': state.category,
@@ -229,6 +236,28 @@ class AddExpenseNotifier extends StateNotifier<AddExpenseState> {
           });
         }
       });
+
+      // Shared-group expenses go to the append-only sync journal
+      // (Architecture §3). Private khata expenses never do.
+      final groupId = state.groupId;
+      if (groupId != null) {
+        await SyncService.recordGroupEvent(
+          eventId: const Uuid().v4(),
+          groupId: groupId,
+          eventType: 'EVENT_EXPENSE_CREATED',
+          payload: {
+            'expense_id': expenseId,
+            'title': state.title,
+            'category': state.category,
+            'total_amount': state.totalAmount,
+            'split_mode': state.splitMode.name,
+            'payer_id': 'user_self',
+            'splits': {
+              for (final m in state.members) m.id: m.shareAmount,
+            },
+          },
+        );
+      }
 
       _ref?.invalidate(dashboardSummaryProvider);
       _ref?.invalidate(spendsCategoryProvider);

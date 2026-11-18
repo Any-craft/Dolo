@@ -334,7 +334,7 @@ Groups with `cloud_synced = 1` in the `groups` table are shared with other users
 - Supabase is already initialized via `supabase_flutter` package in `pubspec.yaml`
 
 ### What to build
-1. `SyncService` class — reads unsynced rows from `sync_journal` (`is_synced = 0`), pushes to Supabase `group_events` table, marks them `is_synced = 1`
+1. `SyncService` class — reads unsynced rows from `sync_journal` (`is_synced = 0`), pushes to Supabase `cloud_sync_journal` table, marks them `is_synced = 1`
 2. Pull remote events for groups the user is in, insert into local `sync_journal`
 3. Call `SyncService.syncNow()` from the "Sync now" button in Task 5's Storage & Sync screen
 

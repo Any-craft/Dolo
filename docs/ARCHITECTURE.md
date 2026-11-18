@@ -75,7 +75,7 @@ In collaborative student groups, offline expense creation leads to sync collisio
    * `timestamp`: ISO-8601 UTC timestamp.
    * `payload`: JSON payload of the action.
 3. When internet is active:
-   * Client pushes uncommitted local events to Supabase `group_events` table.
+   * Client pushes uncommitted local events to Supabase `cloud_sync_journal` table.
    * Realtime listeners stream new events to other group members.
    * Local SQLite tables ingest incoming events in chronological sequence.
 

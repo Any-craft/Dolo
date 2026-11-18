@@ -71,14 +71,6 @@ class SyncService {
         orderBy: 'id ASC',
       );
 
-      if (unsyncedRows.isEmpty) {
-        return const SyncResult(
-          success: true,
-          message: 'All group changes are in sync',
-          syncedCount: 0,
-        );
-      }
-
       int syncedCount = 0;
 
       // 2. Push each change event to Supabase cloud_sync_journal
@@ -98,7 +90,7 @@ class SyncService {
         }
 
         // Upsert into Supabase
-        await client.from('cloud_sync_journal').upsert({
+        await client.from(remoteTable).upsert({
           'event_id': eventId,
           'group_id': groupId,
           'event_type': eventType,
@@ -117,9 +109,25 @@ class SyncService {
         syncedCount++;
       }
 
+      // 3. Pull other members' events for the shared groups on this device.
+      final pulledCount = await _pullRemoteEvents(client, db);
+
+      if (syncedCount == 0 && pulledCount == 0) {
+        return const SyncResult(
+          success: true,
+          message: 'All group changes are in sync',
+          syncedCount: 0,
+        );
+      }
+
+      String plural(int n, String word) => '$n $word${n == 1 ? '' : 's'}';
+      final parts = [
+        if (syncedCount > 0) 'sent ${plural(syncedCount, 'change')}',
+        if (pulledCount > 0) 'received ${plural(pulledCount, 'update')}',
+      ];
       return SyncResult(
         success: true,
-        message: 'Successfully synced $syncedCount change${syncedCount == 1 ? '' : 's'} to cloud!',
+        message: 'Synced: ${parts.join(', ')}',
         syncedCount: syncedCount,
       );
     } catch (e) {
@@ -130,6 +138,62 @@ class SyncService {
         syncedCount: 0,
       );
     }
+  }
+
+  /// Supabase table holding the shared append-only event journal.
+  static const String remoteTable = 'cloud_sync_journal';
+
+  /// Fetches events for every cloud-synced group and stores the new ones.
+  /// Returns how many events were new to this device.
+  ///
+  /// Fetches the full journal for those groups rather than using a
+  /// "since" cursor: `created_at` is client-side, so an event pushed late by
+  /// a member who was offline can carry an older timestamp and would be
+  /// skipped by a cursor. Duplicates are dropped by the UNIQUE event_id.
+  Future<int> _pullRemoteEvents(SupabaseClient client, Database db) async {
+    final groupRows = await db.rawQuery(
+      'SELECT id FROM "${DbTables.groups}" WHERE cloud_synced = 1',
+    );
+    if (groupRows.isEmpty) return 0;
+    final groupIds = groupRows.map((r) => r['id'] as String).toList();
+
+    final remote = await client
+        .from(remoteTable)
+        .select('event_id, group_id, event_type, payload, created_at')
+        .inFilter('group_id', groupIds)
+        .order('created_at', ascending: true);
+
+    return ingestRemoteEvents(List<Map<String, dynamic>>.from(remote));
+  }
+
+  /// Stores remote events in the local journal, already marked as synced so
+  /// they are never pushed back. Events this device already has are ignored.
+  /// Returns the number of newly stored events.
+  static Future<int> ingestRemoteEvents(
+    List<Map<String, dynamic>> events,
+  ) async {
+    final db = await AppDatabase.instance.database;
+    var inserted = 0;
+    await db.transaction((txn) async {
+      for (final e in events) {
+        final payload = e['payload'];
+        final id = await txn.insert(
+          DbTables.syncJournal,
+          {
+            'event_id': e['event_id'] as String,
+            'group_id': e['group_id'] as String,
+            'event_type': e['event_type'] as String,
+            'payload': payload is String ? payload : jsonEncode(payload),
+            'created_at': e['created_at']?.toString() ??
+                DateTime.now().toUtc().toIso8601String(),
+            'is_synced': 1,
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+        if (id != 0) inserted++;
+      }
+    });
+    return inserted;
   }
 
   /// Record a local group modification in the sync journal for background or manual sync.
