@@ -303,17 +303,22 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+    // A Material (not a decorated Container) so ListTile ink splashes in the
+    // settings rows paint on the card instead of being hidden behind it.
+    return Material(
+      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
-        border: Border.all(
+        side: BorderSide(
           color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
         ),
       ),
-      child: child,
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        child: child,
+      ),
     );
   }
 }
