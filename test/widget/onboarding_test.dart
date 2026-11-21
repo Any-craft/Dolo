@@ -32,7 +32,7 @@ void _phoneSize(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('Splash shows the wordmark and finishes after ~2 seconds',
+  testWidgets('Splash shows the wordmark and finishes after ~3 seconds',
       (tester) async {
     var finished = false;
     await tester.pumpWidget(MaterialApp(
@@ -40,7 +40,7 @@ void main() {
       home: SplashScreen(onFinished: () => finished = true),
     ));
 
-    await tester.pump(const Duration(milliseconds: 1000));
+    await tester.pump(const Duration(milliseconds: 2000));
     expect(finished, isFalse);
 
     await tester.pump(const Duration(milliseconds: 1100));
