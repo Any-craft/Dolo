@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dolo/core/utils/money.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
@@ -258,7 +259,7 @@ class _QuickLendBorrowSheetState extends State<QuickLendBorrowSheet> {
                 borderRadius: BorderRadius.circular(AppDimensions.ctaRadius),
               ),
               child: Text(
-                'Log Rs ${_selectedAmount ?? 0} Now',
+                'Log ${formatRs(_selectedAmount ?? 0)} now',
                 style: AppTypography.cardTitle.copyWith(
                   color: widget.isLent ? AppColors.textLightPrimary : Colors.white,
                   fontWeight: FontWeight.w800,

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:dolo/core/widgets/dolo_app_bar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -261,16 +262,7 @@ class _StorageSyncScreenState extends State<StorageSyncScreen> {
 
     return Scaffold(
       backgroundColor: surface,
-      appBar: AppBar(
-        backgroundColor: surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        iconTheme: IconThemeData(color: primary),
-        title: Text(
-          'Storage & Sync',
-          style: AppTypography.cardTitle.copyWith(color: primary),
-        ),
-      ),
+      appBar: const DoloAppBar(title: 'Storage & Sync'),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -350,8 +342,8 @@ class _StorageSyncScreenState extends State<StorageSyncScreen> {
                               : const Icon(Icons.ios_share_rounded),
                           label: const Text('Export all data as CSV'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.indigo,
-                            side: const BorderSide(color: AppColors.indigo),
+                            foregroundColor: AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark),
+                            side: const BorderSide(color: AppColors.mint),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(
                                   AppDimensions.ctaRadius),
@@ -427,7 +419,7 @@ class _StorageSyncScreenState extends State<StorageSyncScreen> {
                         child: ElevatedButton(
                           onPressed: _syncing ? null : _syncNow,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.indigo,
+                            backgroundColor: AppColors.mint,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -541,12 +533,12 @@ class _ChoiceGroup extends StatelessWidget {
                 showCheckmark: false,
                 onSelected: (_) => onSelected(o.value),
                 backgroundColor: Colors.transparent,
-                selectedColor: AppColors.indigoSquircleBg,
+                selectedColor: AppColors.selectedFill(Theme.of(context).brightness == Brightness.dark),
                 side: BorderSide(
-                  color: o.value == selected ? AppColors.indigo : border,
+                  color: o.value == selected ? AppColors.mint : border,
                 ),
                 labelStyle: AppTypography.caption.copyWith(
-                  color: o.value == selected ? AppColors.indigo : muted,
+                  color: o.value == selected ? AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark) : muted,
                   fontWeight: FontWeight.w600,
                 ),
               ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:dolo/core/utils/money.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
@@ -18,7 +18,6 @@ class TransactionFeedItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final currencyFormatter = NumberFormat('#,###');
 
     // Squircle & Text Coloring logic
     Color squircleBg;
@@ -35,17 +34,17 @@ class TransactionFeedItem extends StatelessWidget {
       squircleBg = isDark ? AppColors.mint.withOpacity(0.16) : AppColors.mintSquircleBg;
       squircleText = isDark ? AppColors.mintTextDark : AppColors.mintTextLight;
       trailingColor = squircleText;
-      trailingText = '+ ${currencyFormatter.format(item.amount)}';
+      trailingText = formatRs(item.amount!, signed: true);
     } else if (item.amount != null && item.amount! < 0) {
       squircleBg = isDark ? AppColors.rose.withOpacity(0.18) : AppColors.roseSquircleBg;
       squircleText = isDark ? AppColors.roseTextDark : AppColors.roseTextLight;
       trailingColor = squircleText;
-      trailingText = '- ${currencyFormatter.format(item.amount!.abs())}';
+      trailingText = formatRs(item.amount!, signed: true);
     } else {
       squircleBg = isDark ? AppColors.darkPillInactive : AppColors.lightPillInactive;
       squircleText = isDark ? AppColors.textDarkMuted : AppColors.textLightMuted;
       trailingColor = squircleText;
-      trailingText = '0';
+      trailingText = formatRs(0);
     }
 
     final Color dividerColor = isDark ? AppColors.darkPillInactive : AppColors.lightPillInactive;

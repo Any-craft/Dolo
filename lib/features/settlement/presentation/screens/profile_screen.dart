@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dolo/core/widgets/dolo_app_bar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -31,15 +32,19 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor:
           isDark ? AppColors.darkBackground : AppColors.lightBackground,
-      appBar: AppBar(
-        title: const Text('Profile & Pay Me QR'),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
+      appBar: DoloAppBar(
+        title: 'Profile & Pay Me QR',
+        subtitle: 'Your details, QR and settings',
+        automaticallyImplyLeading: false,
         actions: [
-          TextButton.icon(
-            onPressed: () => _navigateToEditProfile(context, ref),
-            icon: const Icon(Icons.edit_rounded, size: 16),
-            label: const Text('Edit'),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: TextButton.icon(
+              onPressed: () => _navigateToEditProfile(context, ref),
+              style: TextButton.styleFrom(foregroundColor: AppColors.onCockpit),
+              icon: const Icon(Icons.edit_rounded, size: 16),
+              label: const Text('Edit'),
+            ),
           ),
         ],
       ),
@@ -55,13 +60,13 @@ class ProfileScreen extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: AppColors.indigoSquircleBg,
+                    backgroundColor: AppColors.mintSquircleBg,
                     child: Text(
                       avatarInitial,
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.indigoDeep,
+                        color: AppColors.mintTextLight,
                       ),
                     ),
                   ),
@@ -232,13 +237,7 @@ class ProfileScreen extends ConsumerWidget {
                       MaterialPageRoute(builder: (_) => const TrashScreen()),
                     ),
                   ),
-                  const Divider(height: 1),
-                  _SettingsRow(
-                    icon: Icons.group_rounded,
-                    label: 'Group Nicknames',
-                    isDark: isDark,
-                    onTap: () {},
-                  ),
+                  // "Group Nicknames" row hidden until it opens a screen.
                   const Divider(height: 1),
                   _SettingsRow(
                     icon: Icons.notifications_rounded,
@@ -385,7 +384,15 @@ class _SettingsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onTap,
-      leading: Icon(icon, color: AppColors.indigo, size: 22),
+      leading: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: AppColors.selectedFill(isDark),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: AppColors.selectedInk(isDark), size: 20),
+      ),
       title: Text(
         label,
         style: TextStyle(

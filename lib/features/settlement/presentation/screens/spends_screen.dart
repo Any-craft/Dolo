@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dolo/core/widgets/dolo_app_bar.dart';
+import 'package:dolo/core/utils/money.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
@@ -40,10 +42,10 @@ class SpendsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor:
           isDark ? AppColors.darkBackground : AppColors.lightBackground,
-      appBar: AppBar(
-        title: const Text('Spends & Analytics'),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
+      appBar: const DoloAppBar(
+        title: 'Spends & Analytics',
+        subtitle: 'Where your money went',
+        automaticallyImplyLeading: false,
       ),
       body: spendsAsync.when(
         data: (categorySpends) {
@@ -98,7 +100,7 @@ class SpendsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Total Spent: Rs $totalSpends',
+                        'Total spent: ${formatRs(totalSpends)}',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -146,18 +148,9 @@ class _CategoryLegendTile extends StatelessWidget {
     required this.isDark,
   });
 
-  static const _categoryColors = {
-    'Food': AppColors.categoryFood,
-    'Hostel': AppColors.categoryHostel,
-    'Fuel': AppColors.categoryFuel,
-    'Printouts': AppColors.categoryPrintouts,
-    'Udhar': AppColors.categoryUdhar,
-  };
-
   @override
   Widget build(BuildContext context) {
-    final color =
-        _categoryColors[category] ?? AppColors.indigo;
+    final color = AppColors.category(category);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -189,7 +182,7 @@ class _CategoryLegendTile extends StatelessWidget {
             ),
           ),
           Text(
-            'Rs $amountRs (${percentage.toStringAsFixed(1)}%)',
+            '${formatRs(amountRs)} · ${percentage.round()}%',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: isDark

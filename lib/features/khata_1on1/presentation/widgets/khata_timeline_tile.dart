@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:dolo/core/utils/money.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
@@ -20,7 +21,6 @@ class KhataTimelineTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final currencyFormatter = NumberFormat('#,###');
     final dateFormatter = DateFormat('d MMM');
 
     final bool isLent = entry.isLent;
@@ -33,7 +33,6 @@ class KhataTimelineTile extends StatelessWidget {
         : (isDark ? AppColors.roseTextDark : AppColors.roseTextLight);
 
     final Color amountColor = squircleText;
-    final String amountPrefix = isLent ? '+ ' : '- ';
     final String signGlyph = isLent ? '+' : '–';
 
     final Color dividerColor = isDark ? AppColors.darkPillInactive : AppColors.lightPillInactive;
@@ -116,7 +115,7 @@ class KhataTimelineTile extends StatelessWidget {
 
               // Trailing Amount
               Text(
-                '$amountPrefix${currencyFormatter.format(entry.amount)}',
+                formatRs(isLent ? entry.amount : -entry.amount, signed: true),
                 style: AppTypography.rupeeAmount.copyWith(
                   color: amountColor,
                   fontSize: 15,

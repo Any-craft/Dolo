@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dolo/core/utils/money.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
@@ -74,7 +75,7 @@ class GroupsListScreen extends StatelessWidget {
                         child: Text(
                           '+ New',
                           style: AppTypography.caption.copyWith(
-                            color: AppColors.textLightPrimary,
+                            color: Colors.white,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -228,7 +229,7 @@ class _GroupCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  youOwe ? '- Rs ${netBalance.abs()}' : '+ Rs $netBalance',
+                  formatRs(netBalance, signed: true),
                   style: AppTypography.rupeeAmount.copyWith(
                     color: balanceColor,
                     fontSize: 16,

@@ -122,7 +122,7 @@ class ReceiptViewScreen extends StatelessWidget {
                             child: ElevatedButton(
                               onPressed: () => Navigator.pop(context),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.indigo,
+                                backgroundColor: AppColors.mint,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(

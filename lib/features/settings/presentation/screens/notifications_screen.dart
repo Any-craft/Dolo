@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dolo/core/widgets/dolo_app_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dolo/core/constants/app_colors.dart';
@@ -270,16 +271,7 @@ class NotificationsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: surface,
-      appBar: AppBar(
-        backgroundColor: surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        iconTheme: IconThemeData(color: primary),
-        title: Text(
-          'Reminders & Notifications',
-          style: AppTypography.cardTitle.copyWith(color: primary),
-        ),
-      ),
+      appBar: const DoloAppBar(title: 'Reminders & Notifications'),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => Center(
@@ -367,9 +359,9 @@ class NotificationsScreen extends ConsumerWidget {
                       ListTile(
                         contentPadding:
                             const EdgeInsets.symmetric(horizontal: 16),
-                        leading: const Icon(
+                        leading: Icon(
                           Icons.schedule_rounded,
-                          color: AppColors.indigo,
+                          color: AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark),
                         ),
                         title: Text(
                           'Reminder time',
@@ -379,7 +371,7 @@ class NotificationsScreen extends ConsumerWidget {
                         trailing: Text(
                           settings.timeOfDay.format(context),
                           style: AppTypography.cardTitle.copyWith(
-                            color: AppColors.indigo,
+                            color: AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -550,10 +542,10 @@ class _ToneCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final radius = BorderRadius.circular(AppDimensions.cardRadius);
     final selectedBg = isDark
-        ? AppColors.indigo.withValues(alpha: 0.18)
-        : AppColors.indigoSquircleBg;
+        ? AppColors.mintGlass
+        : AppColors.mintSquircleBg;
     final accent =
-        isDark ? AppColors.indigoTextDark : AppColors.indigoTextLight;
+        isDark ? AppColors.mintTextDark : AppColors.mintTextLight;
 
     return Semantics(
       selected: selected,
@@ -564,7 +556,7 @@ class _ToneCard extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: radius,
           side: BorderSide(
-            color: selected ? AppColors.indigo : border,
+            color: selected ? AppColors.mint : border,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -576,7 +568,16 @@ class _ToneCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(tone.emoji, style: const TextStyle(fontSize: 24)),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.selectedFill(isDark),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(_toneIcon(tone),
+                      size: 20, color: AppColors.selectedInk(isDark)),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -604,7 +605,7 @@ class _ToneCard extends StatelessWidget {
                   selected
                       ? Icons.radio_button_checked_rounded
                       : Icons.radio_button_off_rounded,
-                  color: selected ? AppColors.indigo : muted,
+                  color: selected ? AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark) : muted,
                   size: 22,
                 ),
               ],
@@ -638,7 +639,7 @@ class _TonePreviewDialog extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
       ),
       title: Text(
-        '${tone.emoji}  ${tone.label} tone saved',
+        '${tone.label} tone saved',
         style: AppTypography.cardTitle.copyWith(color: primary),
       ),
       content: Column(
@@ -678,5 +679,17 @@ class _TonePreviewDialog extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Icon shown for each WhatsApp reminder tone.
+IconData _toneIcon(ReminderTone tone) {
+  switch (tone) {
+    case ReminderTone.friendly:
+      return Icons.waving_hand_outlined;
+    case ReminderTone.campus:
+      return Icons.school_outlined;
+    case ReminderTone.firm:
+      return Icons.assignment_outlined;
   }
 }

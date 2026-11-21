@@ -250,7 +250,7 @@ class KhataDetailScreen extends ConsumerWidget {
                               ? AppColors.mint
                               : (isDark ? AppColors.darkPillInactive : AppColors.lightPillInactive);
                           final Color txtColor = isSelected
-                              ? AppColors.textLightPrimary
+                              ? Colors.white
                               : (isDark ? AppColors.textDarkMuted : AppColors.textLightMuted);
 
                           return Padding(
@@ -323,7 +323,7 @@ class KhataDetailScreen extends ConsumerWidget {
               child: _ActionCta(
                 text: 'Settle up',
                 backgroundColor: AppColors.mint,
-                textColor: AppColors.textLightPrimary,
+                textColor: Colors.white,
                 onTap: () {
                   notifier.settleAll();
                   ScaffoldMessenger.of(context).showSnackBar(

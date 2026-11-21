@@ -26,14 +26,6 @@ class DonutChartPainter extends CustomPainter {
 
   DonutChartPainter({required this.categories, required this.total});
 
-  final List<Color> palette = const [
-    AppColors.indigo,
-    AppColors.mint,
-    AppColors.rose,
-    AppColors.categoryPrintouts,
-    AppColors.categoryUdhar,
-  ];
-
   @override
   void paint(Canvas canvas, Size size) {
     if (total == 0) return;
@@ -48,11 +40,10 @@ class DonutChartPainter extends CustomPainter {
       ..strokeCap = StrokeCap.butt;
 
     double startAngle = -pi / 2;
-    int index = 0;
-
-    categories.forEach((_, amount) {
+  
+    categories.forEach((name, amount) {
       final sweepAngle = (amount / total) * 2 * pi;
-      paint.color = palette[index % palette.length];
+      paint.color = AppColors.category(name);
 
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
@@ -63,7 +54,6 @@ class DonutChartPainter extends CustomPainter {
       );
 
       startAngle += sweepAngle;
-      index++;
     });
   }
 

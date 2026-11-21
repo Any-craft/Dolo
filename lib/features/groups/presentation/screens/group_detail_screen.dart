@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dolo/core/utils/money.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -197,7 +198,7 @@ class GroupDetailScreen extends ConsumerWidget {
                               ? AppColors.mint
                               : (isDark ? AppColors.darkPillInactive : AppColors.lightPillInactive);
                           final Color txtColor = isSelected
-                              ? AppColors.textLightPrimary
+                              ? Colors.white
                               : (isDark ? AppColors.textDarkMuted : AppColors.textLightMuted);
 
                           return Padding(
@@ -272,7 +273,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       ? 'Clear all dues, Rs ${currencyFormatter.format(state.yourNetBalance.abs())}'
                       : 'All dues cleared!',
                   style: AppTypography.cardTitle.copyWith(
-                    color: AppColors.textLightPrimary,
+                    color: Colors.white,
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                   ),
@@ -328,8 +329,8 @@ class GroupDetailScreen extends ConsumerWidget {
         final shareText = expense.isSettled
             ? 'Settled'
             : (isOwed
-                ? '+ ${formatter.format(expense.yourShare)}'
-                : '- ${formatter.format(expense.yourShare.abs())}');
+                ? formatRs(expense.yourShare, signed: true)
+                : formatRs(-expense.yourShare.abs(), signed: true));
 
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 12),

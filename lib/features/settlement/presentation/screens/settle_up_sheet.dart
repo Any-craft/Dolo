@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dolo/core/utils/money.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -168,10 +169,10 @@ class _SheetHeader extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: const BoxDecoration(
-              color: AppColors.indigoSquircleBg,
+              color: AppColors.mintSquircleBg,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.handshake_rounded, color: AppColors.indigoDeep, size: 20),
+            child: const Icon(Icons.handshake_rounded, color: AppColors.mintTextLight, size: 20),
           ),
           const SizedBox(width: 12),
           Column(
@@ -265,7 +266,7 @@ class _BillCheckTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
           border: Border.all(
             color: bill.isSelected
-                ? AppColors.indigo.withOpacity(0.4)
+                ? AppColors.mint.withValues(alpha: 0.5)
                 : Colors.transparent,
           ),
         ),
@@ -276,11 +277,11 @@ class _BillCheckTile extends StatelessWidget {
               width: 22,
               height: 22,
               decoration: BoxDecoration(
-                color: bill.isSelected ? AppColors.indigo : Colors.transparent,
+                color: bill.isSelected ? AppColors.mint : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color:
-                      bill.isSelected ? AppColors.indigo : AppColors.lightBorder,
+                      bill.isSelected ? AppColors.mint : AppColors.lightBorder,
                   width: 2,
                 ),
               ),
@@ -305,7 +306,7 @@ class _BillCheckTile extends StatelessWidget {
               ),
             ),
             Text(
-              'Rs ${bill.amountRs}',
+              formatRs(bill.amountRs),
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
@@ -332,13 +333,15 @@ class _PaymentMethodToggle extends StatelessWidget {
     return Row(
       children: [
         _MethodChip(
-          label: '💵 Cash',
+          icon: Icons.payments_outlined,
+          label: 'Cash',
           isSelected: selected == PaymentMethod.cash,
           onTap: () => onChanged(PaymentMethod.cash),
         ),
         const SizedBox(width: 10),
         _MethodChip(
-          label: '📱 Online',
+          icon: Icons.phone_iphone_rounded,
+          label: 'Online',
           isSelected: selected == PaymentMethod.online,
           onTap: () => onChanged(PaymentMethod.online),
         ),
@@ -348,11 +351,15 @@ class _PaymentMethodToggle extends StatelessWidget {
 }
 
 class _MethodChip extends StatelessWidget {
+  final IconData icon;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
   const _MethodChip(
-      {required this.label, required this.isSelected, required this.onTap});
+      {required this.icon,
+      required this.label,
+      required this.isSelected,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -362,16 +369,27 @@ class _MethodChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.indigoDeep : AppColors.lightPillInactive,
+          color: isSelected ? AppColors.mint : AppColors.lightPillInactive,
           borderRadius: BorderRadius.circular(30),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: isSelected ? Colors.white : AppColors.textLightPrimary,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? Colors.white : AppColors.textLightMuted,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: isSelected ? Colors.white : AppColors.textLightPrimary,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -381,11 +399,12 @@ class _MethodChip extends StatelessWidget {
 class _WalletLaunchersRow extends StatelessWidget {
   const _WalletLaunchersRow();
 
+  // Each wallet keeps a recognisable colour on a neutral wallet icon.
   static const _wallets = [
-    {'name': 'SadaPay', 'emoji': '🟣', 'scheme': 'sadapay://'},
-    {'name': 'NayaPay', 'emoji': '🟢', 'scheme': 'nayapay://'},
-    {'name': 'Easypaisa', 'emoji': '🟠', 'scheme': 'easypaisa://'},
-    {'name': 'JazzCash', 'emoji': '🔴', 'scheme': 'jazzcash://'},
+    (name: 'SadaPay', color: Color(0xFF7C3AED), scheme: 'sadapay://'),
+    (name: 'NayaPay', color: Color(0xFF16A34A), scheme: 'nayapay://'),
+    (name: 'Easypaisa', color: Color(0xFFEA580C), scheme: 'easypaisa://'),
+    (name: 'JazzCash', color: Color(0xFFDC2626), scheme: 'jazzcash://'),
   ];
 
   Future<void> _launch(String scheme) async {
@@ -405,9 +424,9 @@ class _WalletLaunchersRow extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: _WalletButton(
-                        emoji: w['emoji']!,
-                        name: w['name']!,
-                        onTap: () => _launch(w['scheme']!),
+                        color: w.color,
+                        name: w.name,
+                        onTap: () => _launch(w.scheme),
                       ),
                     ),
                   ))
@@ -421,11 +440,11 @@ class _WalletLaunchersRow extends StatelessWidget {
 }
 
 class _WalletButton extends StatelessWidget {
-  final String emoji;
+  final Color color;
   final String name;
   final VoidCallback onTap;
   const _WalletButton(
-      {required this.emoji, required this.name, required this.onTap});
+      {required this.color, required this.name, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -440,7 +459,16 @@ class _WalletButton extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 22)),
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(Icons.account_balance_wallet_rounded,
+                  size: 18, color: color),
+            ),
             const SizedBox(height: 4),
             Text(name,
                 style: const TextStyle(
@@ -544,7 +572,7 @@ class _SummaryRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.indigoSquircleBg,
+        color: AppColors.mintSquircleBg,
         borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
       ),
       child: Row(
@@ -554,14 +582,14 @@ class _SummaryRow extends StatelessWidget {
                 style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
-                    color: AppColors.indigoTextLight)),
+                    color: AppColors.mintTextLight)),
           ),
           Text(
-            'Rs $netRs',
+            formatRs(netRs),
             style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 22,
-                color: AppColors.indigoDeep),
+                color: AppColors.mintTextLight),
           ),
         ],
       ),
@@ -585,7 +613,7 @@ class _ConfirmCTA extends StatelessWidget {
           child: ElevatedButton(
             onPressed: onConfirm,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.indigo,
+              backgroundColor: AppColors.mint,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius:
@@ -593,7 +621,7 @@ class _ConfirmCTA extends StatelessWidget {
               elevation: 0,
             ),
             child: Text(
-              'Confirm & send slip  •  Rs $netRs',
+              'Confirm & send slip  •  ${formatRs(netRs)}',
               style: const TextStyle(
                   fontSize: 16, fontWeight: FontWeight.w700),
             ),

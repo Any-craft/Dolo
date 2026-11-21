@@ -155,7 +155,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                         Text(
                           'Rs ',
                           style: AppTypography.screenTitle.copyWith(
-                            color: AppColors.mint,
+                            color: AppColors.onCockpitMuted,
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
                           ),
@@ -266,7 +266,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                                 ? AppColors.mint
                                 : (isDark ? AppColors.darkPillInactive : AppColors.lightPillInactive);
                             final Color txtColor = isSelected
-                                ? AppColors.textLightPrimary
+                                ? Colors.white
                                 : (isDark ? AppColors.textDarkMuted : AppColors.textLightMuted);
 
                             return Padding(

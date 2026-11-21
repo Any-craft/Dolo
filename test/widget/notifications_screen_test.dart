@@ -114,7 +114,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(notifier.state.value!.tone, ReminderTone.firm);
-    expect(find.text('📋  Firm tone saved'), findsOneWidget);
+    expect(find.text('Firm tone saved'), findsOneWidget);
     expect(
       find.text(
           'Payment of Rs 1,200 is overdue. Please settle at your earliest.'),
@@ -123,7 +123,7 @@ void main() {
 
     await tester.tap(find.text('Got it'));
     await tester.pumpAndSettle();
-    expect(find.text('📋  Firm tone saved'), findsNothing);
+    expect(find.text('Firm tone saved'), findsNothing);
   });
 
   test('ReminderTone.message formats rupees and appends Raast ID', () {

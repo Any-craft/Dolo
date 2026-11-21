@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:dolo/core/widgets/dolo_app_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dolo/core/constants/app_colors.dart';
@@ -132,15 +133,9 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
 
     return Scaffold(
       backgroundColor: surface,
-      appBar: AppBar(
-        backgroundColor: surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        iconTheme: IconThemeData(color: primary),
-        title: Text(
-          'Trash',
-          style: AppTypography.cardTitle.copyWith(color: primary),
-        ),
+      appBar: const DoloAppBar(
+        title: 'Trash',
+        subtitle: 'Deleted items stay here for 30 days',
       ),
       body: trashed.when(
         skipLoadingOnReload: true,

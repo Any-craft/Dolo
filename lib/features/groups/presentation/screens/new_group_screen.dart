@@ -346,7 +346,7 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
                           child: Text(
                             'Create group',
                             style: AppTypography.cardTitle.copyWith(
-                              color: AppColors.textLightPrimary,
+                              color: Colors.white,
                               fontWeight: FontWeight.w800,
                               fontSize: 15,
                             ),

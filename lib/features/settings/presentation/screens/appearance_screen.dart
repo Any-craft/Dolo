@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dolo/core/widgets/dolo_app_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -86,16 +87,7 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
 
     return Scaffold(
       backgroundColor: surface,
-      appBar: AppBar(
-        backgroundColor: surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        iconTheme: IconThemeData(color: primary),
-        title: Text(
-          'Appearance & App Icon',
-          style: AppTypography.cardTitle.copyWith(color: primary),
-        ),
-      ),
+      appBar: const DoloAppBar(title: 'Appearance & App Icon'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           AppDimensions.screenHorizontalPadding,
@@ -226,7 +218,7 @@ class _ThemeTile extends StatelessWidget {
     final radius = BorderRadius.circular(AppDimensions.cardRadius);
 
     return Material(
-      color: selected ? AppColors.indigoSquircleBg : surface,
+      color: selected ? AppColors.selectedFill(Theme.of(context).brightness == Brightness.dark) : surface,
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -237,7 +229,7 @@ class _ThemeTile extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: radius,
             border: Border.all(
-              color: selected ? AppColors.indigo : border,
+              color: selected ? AppColors.mint : border,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -245,7 +237,7 @@ class _ThemeTile extends StatelessWidget {
             children: [
               Icon(
                 option.icon,
-                color: selected ? AppColors.indigo : muted,
+                color: selected ? AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark) : muted,
                 size: 24,
               ),
               const SizedBox(width: 14),
@@ -256,14 +248,14 @@ class _ThemeTile extends StatelessWidget {
                     Text(
                       option.title,
                       style: AppTypography.cardTitle.copyWith(
-                        color: selected ? AppColors.indigo : primary,
+                        color: selected ? AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark) : primary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       option.subtitle,
                       style: AppTypography.caption.copyWith(
-                        color: selected ? AppColors.indigo : muted,
+                        color: selected ? AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark) : muted,
                       ),
                     ),
                   ],
@@ -273,7 +265,7 @@ class _ThemeTile extends StatelessWidget {
                 selected
                     ? Icons.radio_button_checked_rounded
                     : Icons.radio_button_off_rounded,
-                color: selected ? AppColors.indigo : muted,
+                color: selected ? AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark) : muted,
                 size: 22,
               ),
             ],
@@ -308,7 +300,7 @@ class _IconCard extends StatelessWidget {
     final radius = BorderRadius.circular(AppDimensions.cardRadius);
 
     return Material(
-      color: selected ? AppColors.indigoSquircleBg : surface,
+      color: selected ? AppColors.selectedFill(Theme.of(context).brightness == Brightness.dark) : surface,
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -319,7 +311,7 @@ class _IconCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: radius,
             border: Border.all(
-              color: selected ? AppColors.indigo : border,
+              color: selected ? AppColors.mint : border,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -357,7 +349,7 @@ class _IconCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: AppTypography.cardTitle.copyWith(
-                  color: selected ? AppColors.indigo : primary,
+                  color: selected ? AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark) : primary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -374,7 +366,7 @@ class _IconCard extends StatelessWidget {
               Text(
                 selected ? 'ACTIVE' : '',
                 style: AppTypography.caption.copyWith(
-                  color: AppColors.indigo,
+                  color: AppColors.selectedInk(Theme.of(context).brightness == Brightness.dark),
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
                 ),
