@@ -1,19 +1,23 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../widgets/flying_money.dart';
 
-/// Two-second opening animation: five rupee notes drop onto a growing
-/// stack, a coin lands on top and glints, then the Dolo wordmark rises in.
+/// Three-second opening animation on a white, faintly green background:
+/// the money stack pops in at the centre, two wings fly in from opposite
+/// corners of the screen and attach, a sunlight glint sweeps across the
+/// notes from top-right to bottom-left, and the Dolo wordmark appears.
 ///
-/// Calls [onFinished] once the animation (and [minDuration]) is over.
-/// With "reduce motion" on, the finished stack is shown briefly instead.
+/// Calls [onFinished] when done. With "reduce motion" on, the finished
+/// logo is shown briefly instead.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({
     super.key,
     required this.onFinished,
-    this.minDuration = const Duration(milliseconds: 2000),
+    this.minDuration = const Duration(milliseconds: 3000),
   });
 
   final VoidCallback onFinished;
@@ -23,13 +27,20 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
+// Logo geometry, relative to the centre of the money stack.
+const Size _moneySize = Size(230, 170);
+const Size _wingSize = Size(124, 104);
+// Where each wing's root sits once attached.
+const Offset _leftRoot = Offset(-52, -18);
+const Offset _rightRoot = Offset(58, 22);
+// Root position inside the wing's own box (see WingPainter).
+const Offset _rootInBox = Offset(124 * 0.86, 104 * 0.84);
+
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c =
       AnimationController(vsync: this, duration: widget.minDuration);
   bool _started = false;
-
-  static const int _notes = 5;
 
   @override
   void didChangeDependencies() {
@@ -55,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  /// 0→1 progress of [_c] inside the [start, end] window (fractions of 2s).
+  /// Progress of the timeline inside [start, end] (fractions of 3 s).
   double _seg(double start, double end, [Curve curve = Curves.linear]) {
     final t = ((_c.value - start) / (end - start)).clamp(0.0, 1.0);
     return curve.transform(t);
@@ -63,121 +74,88 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? const [
-                    AppColors.darkCockpitGradientStart,
-                    AppColors.darkCockpitGradientEnd,
-                  ]
-                : const [
-                    AppColors.cockpitGradientStart,
-                    AppColors.cockpitGradientEnd,
-                  ],
-          ),
-        ),
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (context, _) => Stack(
-            alignment: Alignment.center,
-            children: [
-              // Soft glow behind the stack
-              Opacity(
-                opacity: _seg(0.0, 0.5),
-                child: Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.22),
-                        Colors.white.withValues(alpha: 0),
-                      ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SizedBox.expand(
+          child: DecoratedBox(
+            // White with just a breath of green towards the edges.
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0, -0.15),
+                radius: 1.1,
+                colors: [Colors.white, Color(0xFFF3FBF6), Color(0xFFE6F6EC)],
+                stops: [0.0, 0.6, 1.0],
+              ),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) => AnimatedBuilder(
+                animation: _c,
+                builder: (context, _) => Stack(
+                  children: [
+                    Center(child: _buildLogo(constraints.biggest)),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 56,
+                      child: _buildLoader(),
                     ),
-                  ),
+                  ],
                 ),
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Tallest note rests at top 118 + 84 high (+ tilt), so 214.
-                  SizedBox(width: 220, height: 214, child: _buildStack()),
-                  const SizedBox(height: 28),
-                  _buildWordmark(),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStack() {
-    final children = <Widget>[];
-
-    // Notes: each falls in turn and lands with a small bounce.
-    for (var i = 0; i < _notes; i++) {
-      final start = 0.05 + i * 0.09;
-      final t = _seg(start, start + 0.18, Curves.easeOutBack);
-      final appear = _seg(start, start + 0.05);
-      final restY = 118.0 - i * 13; // pile grows upwards
-      final tilt = [-0.07, 0.05, -0.03, 0.06, -0.015][i];
-      children.add(
-        Positioned(
-          left: 22,
-          top: restY - (1 - t) * 260,
-          child: Opacity(
-            opacity: appear,
-            child: Transform.rotate(
-              angle: tilt + (1 - t) * (i.isEven ? -0.4 : 0.4),
-              child: _Banknote(shade: i),
             ),
           ),
         ),
-      );
-    }
-
-    // Coin drops last, then a glint sweeps across it.
-    final coinT = _seg(0.55, 0.72, Curves.bounceOut);
-    final glint = _seg(0.74, 0.9);
-    children.add(
-      Positioned(
-        right: 14,
-        top: 24 - (1 - coinT) * 220,
-        child: Opacity(
-          opacity: _seg(0.55, 0.58),
-          child: _Coin(glint: glint, spin: coinT),
-        ),
       ),
     );
-
-    return Stack(clipBehavior: Clip.none, children: children);
   }
 
-  Widget _buildWordmark() {
-    final t = _seg(0.62, 0.86, Curves.easeOutCubic);
-    final tag = _seg(0.74, 0.95, Curves.easeOut);
+  Widget _buildLogo(Size screen) {
+    // Money pops in, then gives a small bounce when the wings attach.
+    final appear = _seg(0.0, 0.22, Curves.easeOutBack);
+    final attachPop = math.sin(_seg(0.58, 0.72) * math.pi) * 0.06;
+    // Gentle float once assembled.
+    final float = math.sin(_seg(0.6, 1.0) * math.pi * 2) * 4;
+
+    final wordmark = _seg(0.6, 0.85, Curves.easeOutCubic);
+    final tagline = _seg(0.72, 0.95, Curves.easeOut);
+
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
+        Transform.translate(
+          offset: Offset(0, -float),
+          child: SizedBox(
+            width: _moneySize.width,
+            height: _moneySize.height,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                _wing(screen, left: true), // behind the notes
+                Opacity(
+                  opacity: _seg(0.0, 0.12),
+                  child: Transform.scale(
+                    scale: (0.7 + 0.3 * appear) + attachPop,
+                    child: _shinyMoney(),
+                  ),
+                ),
+                _wing(screen, left: false), // in front of the notes
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 26),
         Opacity(
-          opacity: t,
+          opacity: wordmark,
           child: Transform.translate(
-            offset: Offset(0, (1 - t) * 18),
+            offset: Offset(0, (1 - wordmark) * 14),
             child: Text(
               'Dolo',
               style: AppTypography.heroBalance.copyWith(
-                color: Colors.white,
-                fontSize: 46,
+                color: AppColors.cockpitGradientEnd,
+                fontSize: 44,
                 letterSpacing: -1.5,
               ),
             ),
@@ -185,11 +163,11 @@ class _SplashScreenState extends State<SplashScreen>
         ),
         const SizedBox(height: 4),
         Opacity(
-          opacity: tag,
+          opacity: tagline,
           child: Text(
             'Hisaab saaf, dosti pakki',
             style: AppTypography.bodySemiBold.copyWith(
-              color: AppColors.onCockpitMuted,
+              color: AppColors.textLightMuted,
               fontSize: 15,
             ),
           ),
@@ -197,157 +175,120 @@ class _SplashScreenState extends State<SplashScreen>
       ],
     );
   }
-}
 
-/// A stylised green rupee note.
-class _Banknote extends StatelessWidget {
-  const _Banknote({required this.shade});
-  final int shade;
+  /// Notes with a sunlight band sliding from top-right to bottom-left.
+  Widget _shinyMoney() {
+    final p = _seg(0.62, 0.92, Curves.easeInOut);
+    final active = p > 0 && p < 1;
+    // Band position along the diagonal, from just off one corner to the other.
+    final pos = -0.25 + p * 1.5;
+    double s(double v) => v.clamp(0.0, 1.0);
 
-  static const _fills = [
-    Color(0xFF0B6B3E),
-    Color(0xFF0E7C48),
-    Color(0xFF108C51),
-    Color(0xFF14A05D),
-    Color(0xFF1DB86C),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final fill = _fills[shade % _fills.length];
-    return Container(
-      width: 176,
-      height: 84,
-      decoration: BoxDecoration(
-        color: fill,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFBBF7D0), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.22),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
+    return ShaderMask(
+      blendMode: BlendMode.srcATop,
+      shaderCallback: (rect) => LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [
+          Colors.white.withValues(alpha: 0),
+          Colors.white.withValues(alpha: active ? 0.75 : 0),
+          Colors.white.withValues(alpha: 0),
         ],
+        stops: [s(pos - 0.14), s(pos), s(pos + 0.14)],
+      ).createShader(rect),
+      child: const CustomPaint(
+        size: _moneySize,
+        painter: MoneyStackPainter(),
       ),
-      padding: const EdgeInsets.all(5),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.35),
-            width: 1,
+    );
+  }
+
+  /// A wing that flies in from a screen corner (left: top-left, right:
+  /// bottom-right), flapping hard on the way and gently once attached.
+  Widget _wing(Size screen, {required bool left}) {
+    final fly = _seg(left ? 0.12 : 0.18, left ? 0.58 : 0.62, Curves.easeOutCubic);
+    final attached = fly >= 1;
+
+    // Start just beyond the screen corner, measured from the logo centre.
+    final start = left
+        ? Offset(-screen.width / 2 - 140, -screen.height / 2 - 120)
+        : Offset(screen.width / 2 + 140, screen.height / 2 + 120);
+    final end = left ? _leftRoot : _rightRoot;
+    // Curve the path a little so it swoops in rather than sliding.
+    final straight = Offset.lerp(start, end, fly)!;
+    final swoop = math.sin(fly * math.pi) * 60 * (left ? 1 : -1);
+    final root = straight + Offset(swoop, -swoop * 0.4);
+
+    // Flap: fast and wide in flight, slow and small once attached.
+    final t = _c.value;
+    final flap = attached
+        ? math.sin(t * math.pi * 6) * 0.07
+        : math.sin(t * math.pi * 22) * 0.38;
+
+    // Mirrored wing for the right side, turned to point down-right.
+    final baseTilt = left ? 0.0 : 0.95;
+    final rootInBox = left
+        ? _rootInBox
+        : Offset(_wingSize.width - _rootInBox.dx, _rootInBox.dy);
+    final rootAlign = Alignment(
+      rootInBox.dx / _wingSize.width * 2 - 1,
+      rootInBox.dy / _wingSize.height * 2 - 1,
+    );
+
+    final boxTopLeft = root - rootInBox;
+    return Positioned(
+      left: _moneySize.width / 2 + boxTopLeft.dx,
+      top: _moneySize.height / 2 + boxTopLeft.dy,
+      child: Opacity(
+        opacity: _seg(left ? 0.12 : 0.18, left ? 0.2 : 0.26),
+        child: Transform.rotate(
+          alignment: rootAlign,
+          angle: baseTilt + (left ? -flap : flap),
+          child: CustomPaint(
+            size: _wingSize,
+            painter: WingPainter(mirror: !left),
           ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _corner('Rs'),
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.16),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  width: 1.5,
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                'D',
-                style: AppTypography.heroBalance.copyWith(
-                  color: Colors.white,
-                  fontSize: 22,
-                  letterSpacing: 0,
-                ),
-              ),
-            ),
-            _corner('500'),
-          ],
         ),
       ),
     );
   }
 
-  Widget _corner(String text) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Text(
-          text,
-          style: AppTypography.bodySemiBold.copyWith(
-            color: Colors.white.withValues(alpha: 0.85),
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      );
-}
-
-/// Gold coin with a light glint that sweeps across once.
-class _Coin extends StatelessWidget {
-  const _Coin({required this.glint, required this.spin});
-  final double glint;
-  final double spin;
-
-  @override
-  Widget build(BuildContext context) {
-    // A quick flip while falling: squash horizontally, then settle round.
-    final flip = math.cos(spin * math.pi * 2).abs().clamp(0.25, 1.0);
-    return Transform(
-      alignment: Alignment.center,
-      transform: Matrix4.diagonal3Values(spin >= 1 ? 1 : flip, 1, 1),
-      child: Container(
-        width: 58,
-        height: 58,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const RadialGradient(
-            center: Alignment(-0.3, -0.35),
-            colors: [Color(0xFFFDE68A), Color(0xFFF59E0B), Color(0xFFB45309)],
-            stops: [0.0, 0.7, 1.0],
-          ),
-          border: Border.all(color: const Color(0xFFFCD34D), width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFF59E0B).withValues(alpha: 0.5),
-              blurRadius: 14,
-            ),
-          ],
-        ),
-        child: ClipOval(
-          child: Stack(
-            alignment: Alignment.center,
+  Widget _buildLoader() {
+    final show = _seg(0.15, 0.35);
+    final t = _c.value * 3; // three pulses over the splash
+    return Opacity(
+      opacity: show,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                'Rs',
-                style: AppTypography.heroBalance.copyWith(
-                  color: const Color(0xFF92400E),
-                  fontSize: 17,
-                  letterSpacing: 0,
-                ),
-              ),
-              // Glint
-              Positioned.fill(
-                child: Transform.translate(
-                  offset: Offset(-70 + glint * 140, 0),
-                  child: Transform.rotate(
-                    angle: 0.5,
-                    child: Center(
-                      child: Container(
-                        width: 12,
-                        height: 90,
-                        color: Colors.white.withValues(
-                          alpha: glint > 0 && glint < 1 ? 0.55 : 0,
-                        ),
-                      ),
+              for (var i = 0; i < 3; i++)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.mint.withValues(
+                      alpha: 0.3 +
+                          0.7 *
+                              (0.5 +
+                                  0.5 * math.sin((t - i * 0.18) * math.pi * 2)),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
-        ),
+          const SizedBox(height: 10),
+          Text(
+            'Getting your khata ready',
+            style: AppTypography.caption.copyWith(
+              color: AppColors.textLightMuted,
+              fontSize: 13,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -2,9 +2,9 @@
 <!-- Modify this file to customize your launch splash screen -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
-        <!-- Dolo green, matches the in-app splash so there is no white flash -->
+        <!-- White with a hint of green, matches the in-app splash -->
         <shape android:shape="rectangle">
-            <gradient android:angle="315" android:startColor="#12B76A" android:endColor="#0A8F52" />
+            <solid android:color="#F3FBF6" />
         </shape>
     </item>
 
