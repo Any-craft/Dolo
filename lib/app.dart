@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/providers/appearance_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_reveal.dart';
-import 'features/navigation/main_scaffold.dart';
+import 'features/onboarding/presentation/app_start_gate.dart';
 
 export 'core/providers/appearance_provider.dart'
     show themeModeProvider, accentColorProvider;
@@ -24,7 +24,7 @@ class DoloApp extends ConsumerWidget {
       themeMode: themeMode,
       // Lets the header's theme switch reveal the new theme in a circle.
       builder: (context, child) => ThemeReveal(child: child!),
-      home: const MainScaffold(),
+      home: const AppStartGate(),
     );
   }
 }

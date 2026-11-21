@@ -5,9 +5,27 @@ import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
 import 'group_detail_screen.dart';
 import 'new_group_screen.dart';
+import '../widgets/group_sign_in.dart';
 
 class GroupsListScreen extends StatelessWidget {
   const GroupsListScreen({super.key});
+
+  /// First time: offer Google sign-in for a combined khata, then open the
+  /// New group screen. After that, go straight to New group.
+  Future<void> _onNewGroup(BuildContext context) async {
+    void openNewGroup() => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const NewGroupScreen()),
+        );
+
+    if (await GroupAuth.promptSeen()) {
+      if (context.mounted) openNewGroup();
+      return;
+    }
+    if (!context.mounted) return;
+    await GroupAuth.markPromptSeen();
+    if (!context.mounted) return;
+    await showGroupSignInSheet(context, onContinueLocal: openNewGroup);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,11 +78,7 @@ class GroupsListScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     InkWell(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const NewGroupScreen()),
-                        );
-                      },
+                      onTap: () => _onNewGroup(context),
                       borderRadius: BorderRadius.circular(AppDimensions.pillRadius),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -99,6 +113,8 @@ class GroupsListScreen extends StatelessWidget {
                   child: ListView(
                     physics: const BouncingScrollPhysics(),
                     children: [
+                      const GroupSignInCard(),
+                      const SizedBox(height: 16),
                       _GroupCard(
                         name: 'Hostel Gang',
                         membersLine: 'You, Sheeda, Kaptaan, Hamza',
