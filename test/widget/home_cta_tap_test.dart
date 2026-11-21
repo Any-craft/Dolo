@@ -36,8 +36,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // 1. Verify + Add expense button navigates to AddExpenseScreen
-    expect(find.text('+ Add expense'), findsOneWidget);
-    await tester.tap(find.text('+ Add expense'));
+    expect(find.text('Add expense'), findsOneWidget);
+    await tester.tap(find.text('Add expense'));
     await tester.pumpAndSettle();
     expect(find.text('New expense'), findsOneWidget);
 

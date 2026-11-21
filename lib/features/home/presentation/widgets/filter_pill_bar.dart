@@ -31,7 +31,7 @@ class FilterPillBar extends StatelessWidget {
               : (isDark ? AppColors.darkPillInactive : AppColors.lightPillInactive);
 
           final Color textColor = isSelected
-              ? AppColors.textLightPrimary
+              ? Colors.white
               : (isDark ? AppColors.textDarkMuted : AppColors.textLightMuted);
 
           return Padding(

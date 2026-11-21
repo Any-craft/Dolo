@@ -36,6 +36,9 @@ class _MainScaffoldState extends State<MainScaffold> {
         onProfileTap: () {
           setState(() => _currentIndex = 3);
         },
+        onSpendsTap: () {
+          setState(() => _currentIndex = 2);
+        },
       ),
       const GroupsListScreen(),
       const SpendsScreen(),
