@@ -64,6 +64,29 @@ class AppColors {
 
   static const Color textLightPrimary = Color(0xFF0F1F17);
   static const Color textLightMuted = Color(0xFF5F7268);
+  /// One colour per spend category, shared by the donut chart and legend.
+  static Color category(String name) {
+    switch (name.toLowerCase()) {
+      case 'food':
+        return categoryFood;
+      case 'hostel':
+        return categoryHostel;
+      case 'fuel':
+        return categoryFuel;
+      case 'printouts':
+        return categoryPrintouts;
+      case 'udhar':
+      case 'udhār':
+        return categoryUdhar;
+      default:
+        return textLightSecondary;
+    }
+  }
+
+  // Selected chips, cards and options (green, so purple only means "settled")
+  static Color selectedFill(bool isDark) => isDark ? mintGlass : mintSquircleBg;
+  static Color selectedInk(bool isDark) => isDark ? mintTextDark : mintTextLight;
+
   // Text on the green cockpit header
   static const Color onCockpit = Color(0xFFFFFFFF);
   static const Color onCockpitMuted = Color(0xD9FFFFFF); // white 85%
