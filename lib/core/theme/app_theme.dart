@@ -23,6 +23,12 @@ class AppTheme {
         elevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
       ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: AppColors.lightSurface,
+        selectedItemColor: accent,
+        unselectedItemColor: AppColors.textLightSecondary,
+        elevation: 0,
+      ),
     );
   }
 
@@ -30,7 +36,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: AppColors.darkCockpitGradientStart,
+      scaffoldBackgroundColor: AppColors.darkBackground,
       primaryColor: accent,
       colorScheme: ColorScheme.dark(
         primary: accent,
@@ -42,6 +48,12 @@ class AppTheme {
         backgroundColor: Colors.transparent,
         elevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.light,
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: AppColors.darkSurface,
+        selectedItemColor: accent,
+        unselectedItemColor: AppColors.textDarkMuted,
+        elevation: 0,
       ),
     );
   }

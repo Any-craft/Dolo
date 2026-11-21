@@ -35,7 +35,7 @@ void main() {
 
     // Verify Accent Section (5 swatches)
     expect(find.text('ACCENT COLOR'), findsOneWidget);
-    for (final name in ['Mint', 'Rose', 'Indigo', 'Amber', 'Sky']) {
+    for (final name in ['Green', 'Rose', 'Indigo', 'Amber', 'Sky']) {
       expect(find.text(name), findsOneWidget);
     }
 

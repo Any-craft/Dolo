@@ -13,7 +13,8 @@ class AppearanceKeys {
 
 /// The 5 accent swatches from Handoff Task 7 / Design System §1C.
 enum AccentColor {
-  mint('mint', 'Mint', AppColors.mint),
+  // id stays 'mint' so saved settings keep working.
+  mint('mint', 'Green', AppColors.mint),
   rose('rose', 'Rose', AppColors.rose),
   indigo('indigo', 'Indigo', AppColors.indigo),
   amber('amber', 'Amber', AppColors.categoryPrintouts),
