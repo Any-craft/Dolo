@@ -71,6 +71,7 @@ class AddExpenseState {
     String? payerName,
     String? groupName,
     String? groupId,
+    bool clearGroupId = false,
     SplitMode? splitMode,
     List<MemberShareItem>? members,
     String? receiptPath,
@@ -82,7 +83,7 @@ class AddExpenseState {
       category: category ?? this.category,
       payerName: payerName ?? this.payerName,
       groupName: groupName ?? this.groupName,
-      groupId: groupId ?? this.groupId,
+      groupId: clearGroupId ? null : (groupId ?? this.groupId),
       splitMode: splitMode ?? this.splitMode,
       members: members ?? this.members,
       receiptPath: receiptPath ?? this.receiptPath,
@@ -108,7 +109,7 @@ class AddExpenseNotifier extends StateNotifier<AddExpenseState> {
             groupName: 'Hostel Gang',
             splitMode: SplitMode.equal,
             members: [
-              const MemberShareItem(
+              MemberShareItem(
                 id: 'user_self',
                 name: 'You',
                 initials: 'AL',
@@ -162,6 +163,23 @@ class AddExpenseNotifier extends StateNotifier<AddExpenseState> {
 
   void setReceiptPath(String? path) {
     state = state.copyWith(receiptPath: path);
+  }
+
+  void setGroupId(String? id) {
+    state = state.copyWith(groupId: id, clearGroupId: id == null);
+  }
+
+  void configureGroup({
+    required String groupId,
+    required String groupName,
+    required List<MemberShareItem> members,
+  }) {
+    state = state.copyWith(
+      groupId: groupId,
+      groupName: groupName,
+      members: members,
+    );
+    _recalculateShares();
   }
 
   void _recalculateShares() {
@@ -241,22 +259,33 @@ class AddExpenseNotifier extends StateNotifier<AddExpenseState> {
       // (Architecture §3). Private khata expenses never do.
       final groupId = state.groupId;
       if (groupId != null) {
-        await SyncService.recordGroupEvent(
-          eventId: const Uuid().v4(),
-          groupId: groupId,
-          eventType: 'EVENT_EXPENSE_CREATED',
-          payload: {
-            'expense_id': expenseId,
-            'title': state.title,
-            'category': state.category,
-            'total_amount': state.totalAmount,
-            'split_mode': state.splitMode.name,
-            'payer_id': 'user_self',
-            'splits': {
-              for (final m in state.members) m.id: m.shareAmount,
+        try {
+          await SyncService.recordGroupEvent(
+            eventId: const Uuid().v4(),
+            groupId: groupId,
+            eventType: 'expense_created',
+            payload: {
+              'expense_id': expenseId,
+              'title': state.title.trim(),
+              'category': state.category,
+              'total_amount': state.totalAmount,
+              'split_mode': state.splitMode.name,
+              'payer_id': 'user_self',
+              'created_at': now,
+              'splits': [
+                for (final m in state.members)
+                  {
+                    'id': '${expenseId}_${m.id}',
+                    'contact_id': m.id,
+                    'share_amount': m.shareAmount,
+                    'is_paid': m.id == 'user_self' ? 1 : 0,
+                  },
+              ],
             },
-          },
-        );
+          );
+        } catch (_) {
+          // The expense is already saved locally. A journal failure must not fail the save.
+        }
       }
 
       _ref?.invalidate(dashboardSummaryProvider);
