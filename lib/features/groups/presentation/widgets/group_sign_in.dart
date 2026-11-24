@@ -3,19 +3,17 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../core/database/app_settings_store.dart';
+import '../../../../core/sync/sync_service.dart';
 
 /// Sign-in for shared ("combined") khatas. Personal khatas never need it.
-///
-/// NOTE for the sync/auth owner: [GroupAuth.signInWithGoogle] is the one
-/// hook to wire to Supabase Auth (anonymous sign-in, then link Google).
-/// Until then it reports "not connected" and groups keep working locally.
 class GroupAuth {
   GroupAuth._();
 
-  /// Returns true once the user is signed in.
+  /// Silently creates (or reuses) the anonymous Supabase session.
+  /// Returns true when a session exists.
   static Future<bool> signInWithGoogle() async {
-    // TODO(auth): call Supabase Auth here and return the result.
-    return false;
+    final uid = await SyncService.instance.ensureAnonymousSession();
+    return uid != null;
   }
 
   static const String promptSeenKey = 'group_signin_prompt_seen';

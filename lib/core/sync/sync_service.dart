@@ -21,7 +21,11 @@ class SyncResult {
 class SyncService {
   static final SyncService _instance = SyncService._();
   factory SyncService() => _instance;
+  static SyncService get instance => _instance;
   SyncService._();
+
+  static const String supabaseUserIdKey = 'supabase_user_id';
+  Future<String?>? _inFlight;
 
   bool get isConfigured {
     final url = AppConfig.supabaseUrl;
@@ -39,6 +43,58 @@ class SyncService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Call ONLY when the user creates or joins a cloud group.
+  /// Private 1-on-1 khata flows must never call this.
+  Future<String?> ensureAnonymousSession() {
+    return _inFlight ??= _ensure().whenComplete(() => _inFlight = null);
+  }
+
+  Future<String?> _ensure() async {
+    try {
+      final client = _client;
+      if (client == null) return null;
+
+      var user = client.auth.currentUser;
+      if (user == null) {
+        final response = await client.auth.signInAnonymously();
+        user = response.user;
+      }
+      if (user == null) return null;
+
+      await _saveUserId(user.id);
+      return user.id;
+    } on AuthException {
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Local-only check. Returns the saved Supabase user id if available.
+  Future<String?> storedUserId() async {
+    try {
+      final db = await AppDatabase.instance.database;
+      final rows = await db.rawQuery(
+        'SELECT value FROM "${DbTables.appSettings}" WHERE key = ? LIMIT 1',
+        [supabaseUserIdKey],
+      );
+      if (rows.isEmpty) return null;
+      return rows.first['value'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _saveUserId(String userId) async {
+    try {
+      final db = await AppDatabase.instance.database;
+      await db.rawInsert(
+        'INSERT OR REPLACE INTO "${DbTables.appSettings}" (key, value) VALUES (?, ?)',
+        [supabaseUserIdKey, userId],
+      );
+    } catch (_) {}
   }
 
   /// Synchronize pending local group changes to Supabase and pull remote changes.
@@ -166,40 +222,157 @@ class SyncService {
     return ingestRemoteEvents(List<Map<String, dynamic>>.from(remote));
   }
 
+  static const String _selfId = 'user_self';
+
   /// Stores remote events in the local journal, already marked as synced so
-  /// they are never pushed back. Events this device already has are ignored.
-  /// Returns the number of newly stored events.
+  /// they are never pushed back. For 'expense_created', applies it to local
+  /// SQLite expenses and expense_splits tables.
   static Future<int> ingestRemoteEvents(
     List<Map<String, dynamic>> events,
   ) async {
     final db = await AppDatabase.instance.database;
+    final ownUid = await instance.storedUserId();
     var inserted = 0;
-    await db.transaction((txn) async {
-      for (final e in events) {
-        final payload = e['payload'];
-        final id = await txn.insert(
-          DbTables.syncJournal,
-          {
-            'event_id': e['event_id'] as String,
-            'group_id': e['group_id'] as String,
-            'event_type': e['event_type'] as String,
-            'payload': payload is String ? payload : jsonEncode(payload),
-            'created_at': e['created_at']?.toString() ??
-                DateTime.now().toUtc().toIso8601String(),
-            'is_synced': 1,
-          },
-          conflictAlgorithm: ConflictAlgorithm.ignore,
-        );
-        if (id != 0) inserted++;
+
+    for (final e in events) {
+      final eventId = (e['event_id'] ?? e['id'])?.toString();
+      final groupId = e['group_id']?.toString();
+      final type = e['event_type']?.toString();
+      if (eventId == null || groupId == null || type == null) continue;
+
+      try {
+        final isNew = await db.transaction<bool>((txn) async {
+          final dup = await txn.query(
+            DbTables.syncJournal,
+            columns: ['event_id'],
+            where: 'event_id = ?',
+            whereArgs: [eventId],
+            limit: 1,
+          );
+          if (dup.isNotEmpty) return false;
+
+          final rawPayload = e['payload'];
+          final payload = rawPayload is String
+              ? (jsonDecode(rawPayload) as Map<String, dynamic>)
+              : Map<String, dynamic>.from(rawPayload as Map);
+
+          await txn.insert(
+            DbTables.syncJournal,
+            {
+              'event_id': eventId,
+              'group_id': groupId,
+              'event_type': type,
+              'payload': jsonEncode(payload),
+              'created_at': e['created_at']?.toString() ??
+                  DateTime.now().toUtc().toIso8601String(),
+              'is_synced': 1,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+
+          if (type == 'expense_created') {
+            await _applyRemoteExpense(txn, groupId, payload, ownUid);
+          }
+          return true;
+        });
+
+        if (isNew) inserted++;
+      } catch (err) {
+        debugPrint('Error applying remote event $eventId: $err');
       }
-    });
+    }
     return inserted;
+  }
+
+  static Future<void> _applyRemoteExpense(
+    Transaction txn,
+    String groupId,
+    Map<String, dynamic> wirePayload,
+    String? ownUid,
+  ) async {
+    final p = _mapPayloadIds(wirePayload, from: ownUid, to: _selfId);
+    final expenseId = p['expense_id']?.toString() ?? p['id']?.toString();
+    final payerId = p['payer_id']?.toString();
+    final total = (p['total_amount'] as num?)?.toInt();
+    if (expenseId == null || payerId == null || total == null) return;
+
+    final splits = (p['splits'] as List? ?? const [])
+        .map((s) => Map<String, dynamic>.from(s as Map))
+        .toList();
+
+    for (final id in {payerId, ...splits.map((s) => s['contact_id']?.toString())}) {
+      if (id == null || id == _selfId) continue;
+      await txn.rawInsert(
+        'INSERT OR IGNORE INTO contacts (id, name, avatar_initials, is_shadow, created_at) '
+        'VALUES (?, ?, ?, 0, ?)',
+        [id, 'Group member', 'GM', DateTime.now().toIso8601String()],
+      );
+    }
+
+    await txn.insert(
+      DbTables.expenses,
+      {
+        'id': expenseId,
+        'group_id': groupId,
+        'payer_id': payerId,
+        'title': (p['title'] as String?) ?? 'Group Expense',
+        'category': (p['category'] as String?) ?? 'Other',
+        'total_amount': total,
+        'split_mode': (p['split_mode'] as String?) ?? 'equal',
+        'payment_method': (p['payment_method'] as String?) ?? 'Cash',
+        'is_settled': 0,
+        'is_trashed': 0,
+        'created_at': (p['created_at'] as String?) ?? DateTime.now().toIso8601String(),
+        'receipt_image_path': null,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+
+    for (final s in splits) {
+      final contactId = s['contact_id']?.toString();
+      if (contactId == null) continue;
+      await txn.insert(
+        DbTables.expenseSplits,
+        {
+          'id': s['id']?.toString() ?? '${expenseId}_$contactId',
+          'expense_id': expenseId,
+          'contact_id': contactId,
+          'share_amount': (s['share_amount'] as num?)?.toInt() ?? 0,
+          'is_paid': (s['is_paid'] as num?)?.toInt() ?? 0,
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
+  }
+
+  static Map<String, dynamic> _mapPayloadIds(
+    Map<String, dynamic> payload, {
+    required String? from,
+    required String? to,
+  }) {
+    if (from == null || to == null) return payload;
+    String swap(Object? v) => v.toString() == from ? to : v.toString();
+
+    final out = Map<String, dynamic>.from(payload);
+    if (out['payer_id'] != null) out['payer_id'] = swap(out['payer_id']);
+    if (out['splits'] is List) {
+      out['splits'] = [
+        for (final s in out['splits'] as List)
+          if (s is Map)
+            {
+              ...Map<String, dynamic>.from(s),
+              if (s['contact_id'] != null)
+                'contact_id': swap(s['contact_id']),
+            },
+      ];
+    }
+    return out;
   }
 
   /// Record a local group modification in the sync journal for background or manual sync.
   /// (Strict Rule: Private 1-on-1 expenses must NEVER be recorded in sync_journal)
   static Future<void> recordGroupEvent({
-    required String eventId,
+    String? eventId,
     required String groupId,
     required String eventType,
     required Map<String, dynamic> payload,
@@ -207,14 +380,21 @@ class SyncService {
     try {
       final db = await AppDatabase.instance.database;
       final now = DateTime.now().toIso8601String();
+      final ownUid = await instance.storedUserId();
+
+      final wire = eventType == 'expense_created'
+          ? _mapPayloadIds(payload, from: _selfId, to: ownUid)
+          : payload;
+
+      final eid = eventId ?? 'evt_${DateTime.now().microsecondsSinceEpoch}';
 
       await db.insert(
         DbTables.syncJournal,
         {
-          'event_id': eventId,
+          'event_id': eid,
           'group_id': groupId,
           'event_type': eventType,
-          'payload': jsonEncode(payload),
+          'payload': jsonEncode(wire),
           'created_at': now,
           'is_synced': 0,
         },
