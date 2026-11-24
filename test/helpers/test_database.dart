@@ -22,6 +22,11 @@ void _openSqlite() {
 /// Points `sqflite` at an FFI-backed factory so `AppDatabase.instance`
 /// works in `flutter test`. Call from `setUpAll`.
 void setUpTestDatabase() {
-  if (Platform.isLinux) _openSqlite();
-  databaseFactory = createDatabaseFactoryFfi(ffiInit: _openSqlite);
+  if (Platform.isLinux) {
+    _openSqlite();
+    databaseFactory = createDatabaseFactoryFfi(ffiInit: _openSqlite);
+  } else {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
 }

@@ -31,8 +31,13 @@ class ThemeReveal extends StatefulWidget {
 class ThemeRevealState extends State<ThemeReveal>
     with SingleTickerProviderStateMixin {
   final GlobalKey _boundaryKey = GlobalKey();
-  late final AnimationController _controller =
-      AnimationController(vsync: this, duration: widget.duration);
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+  }
 
   ui.Image? _snapshot;
   Offset _center = Offset.zero;
