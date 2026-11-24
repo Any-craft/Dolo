@@ -70,6 +70,8 @@ final dashboardSummaryProvider = FutureProvider<DashboardSummary>((ref) async {
       g.name AS group_name,
       c.name AS payer_name,
       c.avatar_initials AS payer_initials,
+      oc.id AS other_contact_id,
+      oc.name AS other_contact_name,
       COALESCE((
         SELECT SUM(es.share_amount) FROM $splits es
         WHERE es.expense_id = e.id
@@ -85,10 +87,18 @@ final dashboardSummaryProvider = FutureProvider<DashboardSummary>((ref) async {
     FROM $expenses e
     LEFT JOIN $groups g ON g.id = e.group_id
     LEFT JOIN $contacts c ON c.id = e.payer_id
+    LEFT JOIN $contacts oc ON oc.id = CASE
+      WHEN e.payer_id = ? THEN (
+        SELECT es2.contact_id FROM $splits es2
+        WHERE es2.expense_id = e.id AND es2.contact_id != ?
+        ORDER BY es2.id LIMIT 1
+      )
+      ELSE e.payer_id
+    END
     WHERE e.is_trashed = 0
     ORDER BY e.created_at DESC, e.id DESC
     LIMIT 20
-  ''', [_selfId, _selfId]);
+  ''', [_selfId, _selfId, _selfId, _selfId]);
 
   final feedItems = feedRows.map((row) {
     final isSettled = asInt(row['is_settled']) == 1;
@@ -130,6 +140,10 @@ final dashboardSummaryProvider = FutureProvider<DashboardSummary>((ref) async {
       isSettled: isSettled,
       type: type,
       receiptPath: row['receipt_image_path'] as String?,
+      groupId: groupId,
+      contactId: groupId == null ? row['other_contact_id'] as String? : null,
+      contactName:
+          groupId == null ? row['other_contact_name'] as String? : null,
     );
   }).toList();
 
@@ -144,6 +158,8 @@ final dashboardSummaryProvider = FutureProvider<DashboardSummary>((ref) async {
     feedItems: feedItems,
   );
 });
+
+final dashboardProvider = dashboardSummaryProvider;
 
 final filteredFeedProvider = Provider<List<DashboardFeedItem>>((ref) {
   final summaryAsync = ref.watch(dashboardSummaryProvider);

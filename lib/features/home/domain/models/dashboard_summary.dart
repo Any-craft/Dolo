@@ -14,6 +14,9 @@ class DashboardFeedItem {
   final bool isSettled;
   final FeedItemType type;
   final String? receiptPath;
+  final String? contactId;
+  final String? contactName;
+  final String? groupId;
 
   const DashboardFeedItem({
     required this.id,
@@ -24,7 +27,12 @@ class DashboardFeedItem {
     this.isSettled = false,
     required this.type,
     this.receiptPath,
+    this.contactId,
+    this.contactName,
+    this.groupId,
   });
+
+  bool get isGroup => groupId != null;
 }
 
 class DashboardSummary {

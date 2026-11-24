@@ -11,10 +11,12 @@ import '../widgets/quick_lend_borrow_sheet.dart';
 
 class KhataDetailScreen extends ConsumerWidget {
   final String peerId;
+  final String? peerName;
 
   const KhataDetailScreen({
     super.key,
     required this.peerId,
+    this.peerName,
   });
 
   void _showQuickLendBorrowSheet(BuildContext context, WidgetRef ref, {required bool isLent}) {

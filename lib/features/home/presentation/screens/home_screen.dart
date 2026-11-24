@@ -4,12 +4,14 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../providers/dashboard_provider.dart';
+import '../../domain/models/dashboard_summary.dart';
 import '../widgets/dark_cockpit_header.dart';
 import '../widgets/filter_pill_bar.dart';
 import '../widgets/home_summary_card.dart';
 import '../widgets/quick_actions_row.dart';
 import '../widgets/transaction_feed_item.dart';
 import '../../../khata_1on1/presentation/screens/khata_detail_screen.dart';
+import '../../../groups/presentation/screens/group_detail_screen.dart';
 import '../../../expense/presentation/screens/add_expense_screen.dart';
 import '../../../settlement/presentation/screens/settle_up_sheet.dart';
 import '../../../settlement/presentation/screens/profile_screen.dart';
@@ -210,17 +212,8 @@ class HomeScreen extends ConsumerWidget {
                                               context, ref, item.id, item.title),
                                           child: TransactionFeedItem(
                                             item: item,
-                                            onTap: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                  builder: (ctx) =>
-                                                      KhataDetailScreen(
-                                                    peerId: item.title
-                                                        .toLowerCase(),
-                                                  ),
-                                                ),
-                                              );
-                                            },
+                                            onTap: () =>
+                                                _openFeedItem(context, item),
                                           ),
                                         );
                                       },
@@ -334,6 +327,42 @@ class _EmptyFeed extends StatelessWidget {
       ),
     );
   }
+}
+
+void _openFeedItem(BuildContext context, DashboardFeedItem item) {
+  final groupId = item.groupId;
+  if (groupId != null) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GroupDetailScreen(groupId: groupId),
+      ),
+    );
+    return;
+  }
+
+  final contactId = item.contactId;
+  if (contactId != null) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => KhataDetailScreen(
+          peerId: contactId,
+          peerName: item.contactName,
+        ),
+      ),
+    );
+    return;
+  }
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => KhataDetailScreen(
+        peerId: item.title.toLowerCase(),
+      ),
+    ),
+  );
 }
 
 /// Soft-deletes an expense (Module 10) and offers an Undo.
