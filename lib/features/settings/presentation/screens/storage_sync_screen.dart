@@ -11,6 +11,7 @@ import 'package:dolo/core/constants/app_typography.dart';
 import 'package:dolo/core/database/app_database.dart';
 import 'package:dolo/core/database/tables.dart';
 import 'package:dolo/core/sync/sync_service.dart';
+import '../../../groups/presentation/widgets/group_sign_in.dart';
 
 const String _imagesKey = 'auto_purge_images_days';
 const String _metadataKey = 'auto_purge_metadata_days';
@@ -227,6 +228,21 @@ class _StorageSyncScreenState extends State<StorageSyncScreen> {
 
   Future<void> _syncNow() async {
     if (_syncing) return;
+
+    // Check if user has an account / active cloud session
+    final userId = await SyncService.instance.storedUserId();
+    if (userId == null) {
+      if (!mounted) return;
+      await showGroupSignInSheet(
+        context,
+        onContinueLocal: () {
+          _snack('Cloud sync requires an account. Group is currently kept local on this phone.');
+        },
+      );
+      final newId = await SyncService.instance.storedUserId();
+      if (newId == null) return;
+    }
+
     setState(() => _syncing = true);
 
     try {

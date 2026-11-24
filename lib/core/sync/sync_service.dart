@@ -116,6 +116,15 @@ class SyncService {
       );
     }
 
+    final userId = await storedUserId();
+    if (userId == null) {
+      return const SyncResult(
+        success: false,
+        message: 'Sign in required. Cloud sync is only for shared groups.',
+        syncedCount: 0,
+      );
+    }
+
     try {
       final db = await AppDatabase.instance.database;
 
