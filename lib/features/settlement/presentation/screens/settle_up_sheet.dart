@@ -102,7 +102,7 @@ class SettleUpSheet extends ConsumerWidget {
                     if (state.paymentMethod == PaymentMethod.online) ...[
                       const _SectionLabel('Pay with'),
                       const SizedBox(height: 10),
-                      const _WalletLaunchersRow(),
+                      _WalletLaunchersRow(raastId: state.raastId),
                       const SizedBox(height: 20),
                     ],
 
@@ -128,22 +128,35 @@ class SettleUpSheet extends ConsumerWidget {
               // CTA
               _ConfirmCTA(
                 netRs: state.netPayableRs,
-                onConfirm: () {
-                  HapticFeedback.mediumImpact();
-                  final amount = state.netPayableRs;
-                  final method = state.paymentMethod == PaymentMethod.cash
-                      ? 'Cash'
-                      : 'Online Transfer';
-                  Navigator.pop(context);
-                  ReceiptViewScreen.show(
-                    rootContext,
-                    peerId: peerId,
-                    peerName: peerName,
-                    amountRs: amount,
-                    paymentMethod: method,
-                    isSettled: true,
-                  );
-                },
+                isLoading: state.isSubmitting,
+                onConfirm: (state.isSubmitting || state.bills.where((b) => b.isSelected).isEmpty)
+                    ? null
+                    : () async {
+                        HapticFeedback.mediumImpact();
+                        final amount = state.netPayableRs;
+                        final method = state.paymentMethod == PaymentMethod.cash
+                            ? 'Cash'
+                            : 'Online Transfer';
+                        final ok = await notifier.confirmSettlement();
+                        if (!ok) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Could not record settlement. Please try again.')),
+                            );
+                          }
+                          return;
+                        }
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                        ReceiptViewScreen.show(
+                          rootContext,
+                          peerId: peerId,
+                          peerName: state.peerName.isNotEmpty ? state.peerName : peerName,
+                          amountRs: amount,
+                          paymentMethod: method,
+                          isSettled: true,
+                        );
+                      },
               ),
             ],
           ),
@@ -397,7 +410,8 @@ class _MethodChip extends StatelessWidget {
 }
 
 class _WalletLaunchersRow extends StatelessWidget {
-  const _WalletLaunchersRow();
+  final String? raastId;
+  const _WalletLaunchersRow({this.raastId});
 
   // Each wallet keeps a recognisable colour on a neutral wallet icon.
   static const _wallets = [
@@ -433,7 +447,7 @@ class _WalletLaunchersRow extends StatelessWidget {
               .toList(),
         ),
         const SizedBox(height: 10),
-        _CopyRaastRow(),
+        _CopyRaastRow(raastId: raastId),
       ],
     );
   }
@@ -481,15 +495,24 @@ class _WalletButton extends StatelessWidget {
 }
 
 class _CopyRaastRow extends StatelessWidget {
+  final String? raastId;
+  const _CopyRaastRow({this.raastId});
+
   @override
   Widget build(BuildContext context) {
+    final textToCopy = (raastId != null && raastId!.isNotEmpty) ? raastId! : '03001234567';
+    final label = (raastId != null && raastId!.isNotEmpty)
+        ? 'Copy Raast ID ($textToCopy)'
+        : 'Copy Raast ID to pay manually';
+
     return GestureDetector(
       onTap: () {
-        Clipboard.setData(const ClipboardData(text: '03001234567'));
+        Clipboard.setData(ClipboardData(text: textToCopy));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Raast ID copied!'),
-              duration: Duration(seconds: 2)),
+          SnackBar(
+            content: Text('Raast ID "$textToCopy" copied!'),
+            duration: const Duration(seconds: 2),
+          ),
         );
       },
       child: Container(
@@ -501,12 +524,12 @@ class _CopyRaastRow extends StatelessWidget {
           border:
               Border.all(color: AppColors.mint.withOpacity(0.3)),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.copy_rounded, color: AppColors.mint, size: 18),
-            SizedBox(width: 10),
-            Text('Copy Raast ID to pay manually',
-                style: TextStyle(
+            const Icon(Icons.copy_rounded, color: AppColors.mint, size: 18),
+            const SizedBox(width: 10),
+            Text(label,
+                style: const TextStyle(
                     color: AppColors.mintTextLight,
                     fontWeight: FontWeight.w600,
                     fontSize: 13)),
@@ -599,8 +622,13 @@ class _SummaryRow extends StatelessWidget {
 
 class _ConfirmCTA extends StatelessWidget {
   final int netRs;
-  final VoidCallback onConfirm;
-  const _ConfirmCTA({required this.netRs, required this.onConfirm});
+  final VoidCallback? onConfirm;
+  final bool isLoading;
+  const _ConfirmCTA({
+    required this.netRs,
+    required this.onConfirm,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -620,11 +648,20 @@ class _ConfirmCTA extends StatelessWidget {
                       BorderRadius.circular(AppDimensions.radiusLG)),
               elevation: 0,
             ),
-            child: Text(
-              'Confirm & send slip  •  ${formatRs(netRs)}',
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700),
-            ),
+            child: isLoading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Text(
+                    'Confirm & send slip  •  ${formatRs(netRs)}',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
           ),
         ),
       ),
