@@ -296,7 +296,7 @@ class _ProfileForm extends StatelessWidget {
               key: const ValueKey('onboarding_name'),
               controller: name,
               label: 'Your name',
-              hint: 'Talha',
+              hint: 'Enter your name',
               icon: Icons.person_outline_rounded,
               textInputAction: TextInputAction.next,
               textCapitalization: TextCapitalization.words,
