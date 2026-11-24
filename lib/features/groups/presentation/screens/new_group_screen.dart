@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../providers/group_detail_provider.dart';
 
 class MemberNicknameEntry {
   final String name;
@@ -30,6 +31,7 @@ class NewGroupScreen extends StatefulWidget {
 
 class _NewGroupScreenState extends State<NewGroupScreen> {
   final TextEditingController _groupNameController = TextEditingController(text: 'Hostel Gang');
+  bool _isCreating = false;
 
   final List<MemberNicknameEntry> _members = [
     MemberNicknameEntry(
@@ -325,15 +327,7 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
 
                       // Create Group CTA
                       InkWell(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Group "${_groupNameController.text}" created!'),
-                            ),
-                          );
-                        },
+                        onTap: _isCreating ? null : _onCreateGroup,
                         borderRadius: BorderRadius.circular(AppDimensions.ctaRadius),
                         child: Container(
                           height: AppDimensions.ctaHeight,
@@ -344,7 +338,7 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
                             borderRadius: BorderRadius.circular(AppDimensions.ctaRadius),
                           ),
                           child: Text(
-                            'Create group',
+                            _isCreating ? 'Creating...' : 'Create group',
                             style: AppTypography.cardTitle.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w800,
@@ -363,6 +357,64 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _onCreateGroup() async {
+    if (_isCreating) return;
+    final name = _groupNameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a group name')),
+      );
+      return;
+    }
+
+    setState(() => _isCreating = true);
+    HapticFeedback.mediumImpact();
+
+    try {
+      final myEntry = _members.firstWhere(
+        (m) => m.name == 'You',
+        orElse: () => MemberNicknameEntry(name: 'You', initials: 'ME', colorHex: '#09121F', nickname: 'Ali'),
+      );
+
+      final inputs = <GroupMemberInput>[];
+      for (final m in _members) {
+        if (m.name == 'You') continue;
+        final contactId = 'c_${m.name.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}';
+        inputs.add(GroupMemberInput(
+          contactId: contactId,
+          nickname: m.nickname,
+          name: m.name,
+          initials: m.initials,
+          colorHex: m.colorHex,
+          isShadow: m.isShadow,
+        ));
+      }
+
+      await GroupRepository.instance.createGroup(
+        name: name,
+        icon: 'group_work',
+        members: inputs,
+        myNick: myEntry.nickname,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Group "$name" created!')),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not create group: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCreating = false);
+      }
+    }
   }
 }
 

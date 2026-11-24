@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dolo/core/utils/money.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../providers/group_detail_provider.dart';
 import 'group_detail_screen.dart';
 import 'new_group_screen.dart';
 import '../widgets/group_sign_in.dart';
 
-class GroupsListScreen extends StatelessWidget {
+class GroupsListScreen extends ConsumerWidget {
   const GroupsListScreen({super.key});
 
   /// First time: offer Google sign-in for a combined khata, then open the
@@ -28,9 +30,10 @@ class GroupsListScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.darkSurface : AppColors.lightSurface;
+    final groupsAsync = ref.watch(groupsListProvider);
 
     return Scaffold(
       body: Container(
@@ -115,37 +118,86 @@ class GroupsListScreen extends StatelessWidget {
                     children: [
                       const GroupSignInCard(),
                       const SizedBox(height: 16),
-                      _GroupCard(
-                        name: 'Hostel Gang',
-                        membersLine: 'You, Sheeda, Kaptaan, Hamza',
-                        initials: 'HG',
-                        netBalance: -1850,
-                        simplifiedPayments: 2,
-                        isDark: isDark,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const GroupDetailScreen(groupId: 'hostel_gang'),
+                      ...() {
+                        final groups = groupsAsync.valueOrNull ??
+                            const [
+                              GroupSummary(
+                                id: 'hostel_gang',
+                                name: 'Hostel Gang',
+                                cloudSynced: false,
+                                memberCount: 4,
+                                netBalance: -1850,
+                                simplifiedPayments: 2,
+                                membersLine: 'You, Sheeda, Kaptaan, Hamza',
+                                initials: 'HG',
+                              ),
+                              GroupSummary(
+                                id: 'trip_murree',
+                                name: 'Trip to Murree',
+                                cloudSynced: false,
+                                memberCount: 3,
+                                netBalance: 3200,
+                                simplifiedPayments: 1,
+                                membersLine: 'You, Bilal, Farhan',
+                                initials: 'TM',
+                              ),
+                            ];
+
+                        if (groups.isEmpty) {
+                          return [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.group_outlined,
+                                    size: 48,
+                                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No groups yet',
+                                    style: AppTypography.cardTitle.copyWith(
+                                      color: isDark ? AppColors.textDarkPrimary : AppColors.textLightPrimary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Tap "+ New" above to create a group with your roommates or friends.',
+                                    textAlign: TextAlign.center,
+                                    style: AppTypography.caption.copyWith(
+                                      color: isDark ? AppColors.textDarkMuted : AppColors.textLightMuted,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _GroupCard(
-                        name: 'Trip to Murree',
-                        membersLine: 'You, Bilal, Farhan',
-                        initials: 'TM',
-                        netBalance: 3200,
-                        simplifiedPayments: 1,
-                        isDark: isDark,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const GroupDetailScreen(groupId: 'trip_murree'),
+                          ];
+                        }
+
+                        return [
+                          for (final g in groups) ...[
+                            _GroupCard(
+                              name: g.name,
+                              membersLine: g.membersLine,
+                              initials: g.initials,
+                              netBalance: g.netBalance,
+                              simplifiedPayments: g.simplifiedPayments,
+                              isDark: isDark,
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => GroupDetailScreen(groupId: g.id),
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
+                            const SizedBox(height: 12),
+                          ],
+                        ];
+                      }(),
                     ],
                   ),
                 ),
